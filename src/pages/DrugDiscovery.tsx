@@ -1,11 +1,10 @@
-
 import { useState, useEffect } from "react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import GlassCard from "@/components/ui/GlassCard";
 import { 
-  BeakerIcon, Atom, Sparkles, FileSymlink, 
+  Beaker, Atom, Sparkles, FileSymlink, 
   DownloadCloud, Dna, Loader2, CircleEqual,
   ArrowRightLeft, ShieldAlert, CheckCircle,
   Microscope 
@@ -14,8 +13,8 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
-// Custom BeakerIcon component
-const BeakerIcon = ({ className }: { className?: string }) => {
+// Custom BeakerIcon component - renamed to CustomBeakerIcon to avoid conflict
+const CustomBeakerIcon = ({ className }: { className?: string }) => {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <path d="M8 3v4a1 1 0 0 1-1 1H3" />
@@ -214,7 +213,7 @@ const DrugDiscovery = () => {
                           </>
                         ) : (
                           <>
-                            <BeakerIcon className="mr-2 h-4 w-4" />
+                            <CustomBeakerIcon className="mr-2 h-4 w-4" />
                             Start AI Generation
                           </>
                         )}

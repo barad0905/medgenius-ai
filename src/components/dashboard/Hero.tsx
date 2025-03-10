@@ -1,5 +1,4 @@
-
-import { ArrowRight, FileText, Flask, HeartPulse, Sparkles } from "lucide-react";
+import { ArrowRight, FileText, FlaskConical, HeartPulse, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -51,7 +50,7 @@ const Hero = () => {
               description: "Extract key information from patient reports with advanced NLP"
             },
             {
-              icon: <Flask className="h-10 w-10 text-primary-500" />,
+              icon: <FlaskConical className="h-10 w-10 text-primary-500" />,
               title: "Drug Discovery",
               description: "Generate novel drug molecules using state-of-the-art AI"
             },

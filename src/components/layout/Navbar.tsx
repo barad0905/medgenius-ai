@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Menu, X, Flask, HeartPulse, FileText, Beaker, FlaskConical } from "lucide-react";
+import { Menu, X, FlaskConical, HeartPulse, FileText, Beaker, TestTube } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const Navbar = () => {
@@ -23,9 +23,9 @@ const Navbar = () => {
   const navLinks = [
     { name: "Home", path: "/", icon: <HeartPulse className="mr-2 h-4 w-4" /> },
     { name: "Patient Analysis", path: "/patient-analysis", icon: <FileText className="mr-2 h-4 w-4" /> },
-    { name: "Drug Recommendation", path: "/drug-recommendation", icon: <Flask className="mr-2 h-4 w-4" /> },
+    { name: "Drug Recommendation", path: "/drug-recommendation", icon: <FlaskConical className="mr-2 h-4 w-4" /> },
     { name: "Drug Discovery", path: "/drug-discovery", icon: <Beaker className="mr-2 h-4 w-4" /> },
-    { name: "Clinical Trials", path: "/clinical-trials", icon: <FlaskConical className="mr-2 h-4 w-4" /> },
+    { name: "Clinical Trials", path: "/clinical-trials", icon: <TestTube className="mr-2 h-4 w-4" /> },
     { name: "Side Effects", path: "/side-effects", icon: <HeartPulse className="mr-2 h-4 w-4" /> },
   ];
 
