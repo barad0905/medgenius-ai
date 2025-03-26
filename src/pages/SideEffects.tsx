@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -6,12 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShieldAlert, Search, ArrowRightLeft, CheckCircle, Sparkles, Download, Loader2 } from "lucide-react";
+import { ShieldAlert, Search, ArrowRightLeft, CheckCircle, Sparkles, Download, Loader2, Book } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 
-// Groq API key
 const GROQ_API_KEY = "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";
+const GEMINI_API_KEY = "AIzaSyC7TVCHC-b73Z0XKpVnHkQcQhIl-YwM93U";
 
 const SideEffects = () => {
   const [drugName, setDrugName] = useState("");
@@ -21,6 +20,7 @@ const SideEffects = () => {
   const [showResults, setShowResults] = useState(false);
   const [sideEffects, setSideEffects] = useState<any[]>([]);
   const [interactions, setInteractions] = useState<any[]>([]);
+  const [drugInfo, setDrugInfo] = useState<any>(null);
   const { toast } = useToast();
 
   const searchWithGroq = async (prompt: string) => {
@@ -58,7 +58,6 @@ const SideEffects = () => {
       const content = data.choices[0].message.content;
       
       try {
-        // Extract JSON from the response
         const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/) || 
                          content.match(/```\n([\s\S]*?)\n```/) ||
                          content.match(/{[\s\S]*}/);
@@ -82,6 +81,71 @@ const SideEffects = () => {
     }
   };
 
+  const searchWithGemini = async (drugName: string) => {
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: `Please provide comprehensive information about the drug ${drugName}. Include the following information in JSON format:
+                  {
+                    "name": "Full drug name",
+                    "genericName": "Generic name if applicable",
+                    "drugClass": "Class of medication",
+                    "description": "Brief description of the drug",
+                    "usedFor": ["Condition 1", "Condition 2"],
+                    "mechanism": "How the drug works in the body",
+                    "commonDosage": "Typical dosage information",
+                    "warnings": ["Warning 1", "Warning 2"],
+                    "interactions": ["Interaction 1", "Interaction 2"]
+                  }
+                  Only return valid JSON with no other text or explanation.`
+                }
+              ]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.2,
+            maxOutputTokens: 2048
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Gemini API request failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("Gemini API response:", data);
+
+      if (data.candidates && data.candidates[0].content.parts && data.candidates[0].content.parts[0].text) {
+        const textResponse = data.candidates[0].content.parts[0].text;
+        
+        try {
+          const jsonStart = textResponse.indexOf('{');
+          const jsonEnd = textResponse.lastIndexOf('}') + 1;
+          const jsonStr = textResponse.substring(jsonStart, jsonEnd);
+          
+          return JSON.parse(jsonStr);
+        } catch (jsonError) {
+          console.error("Error parsing JSON from Gemini:", jsonError);
+          throw new Error("Could not parse response from Gemini API");
+        }
+      }
+      
+      throw new Error("Invalid response format from Gemini API");
+    } catch (error) {
+      console.error("Error querying Gemini API:", error);
+      throw error;
+    }
+  };
+
   const handlePrediction = async () => {
     if (!drugName.trim()) {
       toast({
@@ -94,8 +158,8 @@ const SideEffects = () => {
 
     setIsLoading(true);
     setProgress(0);
+    setDrugInfo(null);
     
-    // Setup progress simulation
     const interval = setInterval(() => {
       setProgress(prev => {
         const newProgress = prev + 10;
@@ -108,6 +172,9 @@ const SideEffects = () => {
     }, 300);
     
     try {
+      const drugInfoResult = await searchWithGemini(drugName);
+      setDrugInfo(drugInfoResult);
+      
       const prompt = `Please provide detailed information about the side effects of ${drugName}. Format the response as a JSON array with the following structure for each side effect:
       [
         {"name": "side effect name", "probability": 0.XX (between 0 and 1), "severity": "Mild/Moderate/Severe", "management": "brief management approach"},
@@ -115,18 +182,17 @@ const SideEffects = () => {
       ]
       Include only the JSON array in your response, no other text.`;
       
-      const result = await searchWithGroq(prompt);
+      const sideEffectsResult = await searchWithGroq(prompt);
       
-      if (result) {
-        setSideEffects(Array.isArray(result) ? result : []);
+      if (sideEffectsResult) {
+        setSideEffects(Array.isArray(sideEffectsResult) ? sideEffectsResult : []);
         setShowResults(true);
         setProgress(100);
         toast({
-          title: "Prediction complete",
-          description: "Side effect prediction analysis has been completed successfully.",
+          title: "Analysis complete",
+          description: "Drug information and side effect analysis has been completed successfully.",
         });
       } else {
-        // Fallback to default side effects
         setSideEffects([
           { name: "Headache", probability: 0.72, severity: "Mild", management: "Over-the-counter pain relievers, rest" },
           { name: "Nausea", probability: 0.65, severity: "Moderate", management: "Take with food, anti-nausea medication" },
@@ -137,7 +203,7 @@ const SideEffects = () => {
         setShowResults(true);
         setProgress(100);
         toast({
-          title: "Using default data",
+          title: "Using partial data",
           description: "Using sample side effect data for demonstration.",
         });
       }
@@ -149,7 +215,6 @@ const SideEffects = () => {
         variant: "destructive",
       });
       
-      // Fallback data
       setSideEffects([
         { name: "Headache", probability: 0.72, severity: "Mild", management: "Over-the-counter pain relievers, rest" },
         { name: "Nausea", probability: 0.65, severity: "Moderate", management: "Take with food, anti-nausea medication" },
@@ -178,7 +243,6 @@ const SideEffects = () => {
     setIsLoading(true);
     setProgress(0);
     
-    // Setup progress simulation
     const interval = setInterval(() => {
       setProgress(prev => {
         const newProgress = prev + 10;
@@ -215,7 +279,6 @@ const SideEffects = () => {
           description: "Drug interaction analysis has been completed successfully.",
         });
       } else {
-        // Fallback to default interactions
         setInteractions([
           { 
             drug1: interactionDrugs[0], 
@@ -240,7 +303,6 @@ const SideEffects = () => {
         variant: "destructive",
       });
       
-      // Fallback data
       setInteractions([
         { 
           drug1: interactionDrugs[0], 
@@ -285,7 +347,6 @@ const SideEffects = () => {
       <Navbar />
 
       <main className="flex-grow">
-        {/* Hero section */}
         <section className="bg-gradient-to-b from-primary-50 to-white pt-32 pb-16">
           <div className="container px-4 max-w-6xl mx-auto">
             <div className="text-center mb-12">
@@ -400,7 +461,6 @@ const SideEffects = () => {
           </div>
         </section>
 
-        {/* Results section */}
         {showResults && (
           <section className="py-16 px-4">
             <div className="container max-w-6xl mx-auto">
@@ -411,6 +471,105 @@ const SideEffects = () => {
                   Download Results
                 </Button>
               </div>
+              
+              {drugInfo && (
+                <div className="mb-8 animate-fadeIn">
+                  <Card className="p-6 border-primary/10 bg-gradient-to-r from-blue-50 to-white">
+                    <div className="flex flex-col md:flex-row gap-6">
+                      <div className="flex-1">
+                        <div className="flex items-center mb-4">
+                          <div className="bg-primary-100 p-2 rounded-full mr-3">
+                            <Book className="h-5 w-5 text-primary-600" />
+                          </div>
+                          <div>
+                            <h3 className="text-xl font-bold">{drugInfo.name || drugName}</h3>
+                            {drugInfo.genericName && (
+                              <p className="text-sm text-muted-foreground">{drugInfo.genericName}</p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-4">
+                          {drugInfo.drugClass && (
+                            <div>
+                              <h4 className="text-sm font-medium text-muted-foreground">Drug Class</h4>
+                              <p className="font-medium">{drugInfo.drugClass}</p>
+                            </div>
+                          )}
+                          
+                          {drugInfo.description && (
+                            <div>
+                              <h4 className="text-sm font-medium text-muted-foreground">Description</h4>
+                              <p>{drugInfo.description}</p>
+                            </div>
+                          )}
+                          
+                          {drugInfo.mechanism && (
+                            <div>
+                              <h4 className="text-sm font-medium text-muted-foreground">Mechanism of Action</h4>
+                              <p>{drugInfo.mechanism}</p>
+                            </div>
+                          )}
+                          
+                          {drugInfo.commonDosage && (
+                            <div>
+                              <h4 className="text-sm font-medium text-muted-foreground">Common Dosage</h4>
+                              <p>{drugInfo.commonDosage}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="flex-1">
+                        {drugInfo.usedFor && Array.isArray(drugInfo.usedFor) && drugInfo.usedFor.length > 0 && (
+                          <div className="mb-4">
+                            <h4 className="text-sm font-medium text-muted-foreground mb-2">Used For</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {drugInfo.usedFor.map((use: string, index: number) => (
+                                <div key={index} className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-sm">
+                                  {use}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {drugInfo.warnings && Array.isArray(drugInfo.warnings) && drugInfo.warnings.length > 0 && (
+                          <div className="mb-4">
+                            <h4 className="text-sm font-medium text-muted-foreground mb-2">Warnings</h4>
+                            <div className="bg-amber-50 border border-amber-100 rounded-lg p-3">
+                              <ul className="space-y-2">
+                                {drugInfo.warnings.map((warning: string, index: number) => (
+                                  <li key={index} className="flex items-start gap-2 text-amber-800">
+                                    <ShieldAlert className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                                    <span>{warning}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {drugInfo.interactions && Array.isArray(drugInfo.interactions) && drugInfo.interactions.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-medium text-muted-foreground mb-2">Common Interactions</h4>
+                            <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
+                              <ul className="space-y-2">
+                                {drugInfo.interactions.map((interaction: string, index: number) => (
+                                  <li key={index} className="flex items-start gap-2 text-blue-800">
+                                    <ArrowRightLeft className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                                    <span>{interaction}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+              )}
               
               <Tabs defaultValue="side-effects" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 mb-6 max-w-md">
@@ -507,7 +666,6 @@ const SideEffects = () => {
           </section>
         )}
 
-        {/* Disease Prediction Section - Replacing Clinical Trials */}
         <section className="bg-gray-50 py-16 px-4">
           <div className="container max-w-6xl mx-auto">
             <div className="bg-white rounded-xl shadow-sm border p-8 flex flex-col md:flex-row gap-8 items-center">
