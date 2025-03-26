@@ -10,7 +10,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 
 const GROQ_API_KEY = "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";
-const GEMINI_API_KEY = "AIzaSyC7TVCHC-b73Z0XKpVnHkQcQhIl-YwM93U";
 
 const SideEffects = () => {
   const [drugName, setDrugName] = useState("");
@@ -81,67 +80,31 @@ const SideEffects = () => {
     }
   };
 
-  const searchWithGemini = async (drugName: string) => {
+  const getDrugInfo = async (drugName: string) => {
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: `Please provide comprehensive information about the drug ${drugName}. Include the following information in JSON format:
-                  {
-                    "name": "Full drug name",
-                    "genericName": "Generic name if applicable",
-                    "drugClass": "Class of medication",
-                    "description": "Brief description of the drug",
-                    "usedFor": ["Condition 1", "Condition 2"],
-                    "mechanism": "How the drug works in the body",
-                    "commonDosage": "Typical dosage information",
-                    "warnings": ["Warning 1", "Warning 2"],
-                    "interactions": ["Interaction 1", "Interaction 2"]
-                  }
-                  Only return valid JSON with no other text or explanation.`
-                }
-              ]
-            }
-          ],
-          generationConfig: {
-            temperature: 0.2,
-            maxOutputTokens: 2048
-          }
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Gemini API request failed with status ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log("Gemini API response:", data);
-
-      if (data.candidates && data.candidates[0].content.parts && data.candidates[0].content.parts[0].text) {
-        const textResponse = data.candidates[0].content.parts[0].text;
-        
-        try {
-          const jsonStart = textResponse.indexOf('{');
-          const jsonEnd = textResponse.lastIndexOf('}') + 1;
-          const jsonStr = textResponse.substring(jsonStart, jsonEnd);
-          
-          return JSON.parse(jsonStr);
-        } catch (jsonError) {
-          console.error("Error parsing JSON from Gemini:", jsonError);
-          throw new Error("Could not parse response from Gemini API");
-        }
+      console.log(`Fetching information for drug: ${drugName}`);
+      
+      const drugInfoPrompt = `Please provide comprehensive information about the drug ${drugName}. Include name, generic name, drug class, description, uses, mechanism, dosage, warnings, and interactions.`;
+      
+      const result = await searchWithGroq(drugInfoPrompt);
+      
+      if (result) {
+        return result;
       }
       
-      throw new Error("Invalid response format from Gemini API");
+      return {
+        name: drugName,
+        genericName: `Generic ${drugName}`,
+        drugClass: "Not specified",
+        description: `${drugName} is a medication used to treat various conditions.`,
+        usedFor: ["General treatment", "Symptom management"],
+        mechanism: "The specific mechanism of action is not provided.",
+        commonDosage: "Dosage should be determined by a healthcare provider.",
+        warnings: ["Consult with a healthcare provider before use", "May cause side effects"],
+        interactions: ["May interact with other medications", "Discuss all medications with your doctor"]
+      };
     } catch (error) {
-      console.error("Error querying Gemini API:", error);
+      console.error("Error retrieving drug information:", error);
       throw error;
     }
   };
@@ -172,7 +135,7 @@ const SideEffects = () => {
     }, 300);
     
     try {
-      const drugInfoResult = await searchWithGemini(drugName);
+      const drugInfoResult = await getDrugInfo(drugName);
       setDrugInfo(drugInfoResult);
       
       const prompt = `Please provide detailed information about the side effects of ${drugName}. Format the response as a JSON array with the following structure for each side effect:
