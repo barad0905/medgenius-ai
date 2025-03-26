@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -16,6 +15,21 @@ const GROQ_API_KEY = "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";
 const ensureArray = (value: any): any[] => {
   if (!value) return [];
   return Array.isArray(value) ? value : [value];
+};
+
+// Helper function to flatten nested objects into an array of strings
+const flattenObject = (obj: any): string[] => {
+  if (!obj) return [];
+  if (typeof obj !== 'object') return [String(obj)];
+  if (Array.isArray(obj)) return obj.map(item => typeof item === 'string' ? item : JSON.stringify(item));
+  
+  // Handle nested object by concatenating all values
+  return Object.values(obj).flatMap(value => 
+    typeof value === 'string' ? value :
+    Array.isArray(value) ? value.map(v => typeof v === 'string' ? v : JSON.stringify(v)) :
+    typeof value === 'object' ? flattenObject(value) :
+    String(value)
+  );
 };
 
 const PatientAnalysis = () => {
@@ -87,11 +101,17 @@ const PatientAnalysis = () => {
         try {
           const parsed = JSON.parse(cleanedJson);
           
-          // Ensure all array properties are actually arrays
+          // Process any nested objects that might be in medicalHistory
+          let medicalHistory = ensureArray(parsed.medicalHistory);
+          if (medicalHistory.length === 1 && typeof medicalHistory[0] === 'object' && !Array.isArray(medicalHistory[0])) {
+            medicalHistory = flattenObject(medicalHistory[0]);
+          }
+          
+          // Ensure all array properties are actually arrays and flatten any nested objects
           const normalized = {
             demographics: parsed.demographics || {},
             symptoms: ensureArray(parsed.symptoms),
-            medicalHistory: ensureArray(parsed.medicalHistory),
+            medicalHistory: medicalHistory,
             geneticMarkers: ensureArray(parsed.geneticMarkers),
             currentMedications: ensureArray(parsed.currentMedications),
             allergies: ensureArray(parsed.allergies)
@@ -105,11 +125,17 @@ const PatientAnalysis = () => {
           if (lastAttempt) {
             const parsed = JSON.parse(lastAttempt[0]);
             
+            // Process any nested objects that might be in medicalHistory
+            let medicalHistory = ensureArray(parsed.medicalHistory);
+            if (medicalHistory.length === 1 && typeof medicalHistory[0] === 'object' && !Array.isArray(medicalHistory[0])) {
+              medicalHistory = flattenObject(medicalHistory[0]);
+            }
+            
             // Ensure all array properties are actually arrays
             return {
               demographics: parsed.demographics || {},
               symptoms: ensureArray(parsed.symptoms),
-              medicalHistory: ensureArray(parsed.medicalHistory),
+              medicalHistory: medicalHistory,
               geneticMarkers: ensureArray(parsed.geneticMarkers),
               currentMedications: ensureArray(parsed.currentMedications),
               allergies: ensureArray(parsed.allergies)
@@ -257,11 +283,16 @@ const PatientAnalysis = () => {
       
       const result = await analyzeWithGroq(textToAnalyze);
       
-      // Ensure all array properties are actually arrays
+      // Ensure all array properties are actually arrays and flatten any nested objects
+      let medicalHistory = ensureArray(result.medicalHistory);
+      if (medicalHistory.length === 1 && typeof medicalHistory[0] === 'object' && !Array.isArray(medicalHistory[0])) {
+        medicalHistory = flattenObject(medicalHistory[0]);
+      }
+      
       const normalizedResults = {
         demographics: result.demographics || {},
         symptoms: ensureArray(result.symptoms),
-        medicalHistory: ensureArray(result.medicalHistory),
+        medicalHistory: medicalHistory,
         geneticMarkers: ensureArray(result.geneticMarkers),
         currentMedications: ensureArray(result.currentMedications),
         allergies: ensureArray(result.allergies)
@@ -503,7 +534,7 @@ const PatientAnalysis = () => {
                                 <span className="text-primary bg-primary-50 p-1 rounded-full">
                                   <Check className="h-3 w-3" />
                                 </span>
-                                {item}
+                                {typeof item === 'string' ? item : JSON.stringify(item)}
                               </li>
                             ))}
                           </ul>
@@ -519,7 +550,7 @@ const PatientAnalysis = () => {
                                 <span className="text-primary bg-primary-50 p-1 rounded-full">
                                   <Check className="h-3 w-3" />
                                 </span>
-                                {marker}
+                                {typeof marker === 'string' ? marker : JSON.stringify(marker)}
                               </li>
                             ))}
                           </ul>
@@ -533,7 +564,7 @@ const PatientAnalysis = () => {
                                 <span className="text-primary bg-primary-50 p-1 rounded-full">
                                   <Check className="h-3 w-3" />
                                 </span>
-                                {med}
+                                {typeof med === 'string' ? med : JSON.stringify(med)}
                               </li>
                             ))}
                           </ul>
@@ -548,7 +579,7 @@ const PatientAnalysis = () => {
                                   <span className="text-destructive bg-destructive/10 p-1 rounded-full">
                                     <X className="h-3 w-3" />
                                   </span>
-                                  {allergy}
+                                  {typeof allergy === 'string' ? allergy : JSON.stringify(allergy)}
                                 </li>
                               ))
                             ) : (
