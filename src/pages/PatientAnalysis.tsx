@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -10,6 +11,12 @@ import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 
 const GROQ_API_KEY = "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";
+
+// Helper function to ensure a value is an array
+const ensureArray = (value: any): any[] => {
+  if (!value) return [];
+  return Array.isArray(value) ? value : [value];
+};
 
 const PatientAnalysis = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -78,13 +85,35 @@ const PatientAnalysis = () => {
         const cleanedJson = jsonStr.replace(/```[a-z]*\n?/g, '').trim();
         
         try {
-          return JSON.parse(cleanedJson);
+          const parsed = JSON.parse(cleanedJson);
+          
+          // Ensure all array properties are actually arrays
+          const normalized = {
+            demographics: parsed.demographics || {},
+            symptoms: ensureArray(parsed.symptoms),
+            medicalHistory: ensureArray(parsed.medicalHistory),
+            geneticMarkers: ensureArray(parsed.geneticMarkers),
+            currentMedications: ensureArray(parsed.currentMedications),
+            allergies: ensureArray(parsed.allergies)
+          };
+          
+          return normalized;
         } catch (innerError) {
           console.error("Failed to parse cleaned JSON:", innerError);
           
           const lastAttempt = cleanedJson.match(/{[\s\S]*}/);
           if (lastAttempt) {
-            return JSON.parse(lastAttempt[0]);
+            const parsed = JSON.parse(lastAttempt[0]);
+            
+            // Ensure all array properties are actually arrays
+            return {
+              demographics: parsed.demographics || {},
+              symptoms: ensureArray(parsed.symptoms),
+              medicalHistory: ensureArray(parsed.medicalHistory),
+              geneticMarkers: ensureArray(parsed.geneticMarkers),
+              currentMedications: ensureArray(parsed.currentMedications),
+              allergies: ensureArray(parsed.allergies)
+            };
           }
           
           throw new Error("Could not parse response from AI service");
@@ -228,7 +257,17 @@ const PatientAnalysis = () => {
       
       const result = await analyzeWithGroq(textToAnalyze);
       
-      setAnalysisResults(result);
+      // Ensure all array properties are actually arrays
+      const normalizedResults = {
+        demographics: result.demographics || {},
+        symptoms: ensureArray(result.symptoms),
+        medicalHistory: ensureArray(result.medicalHistory),
+        geneticMarkers: ensureArray(result.geneticMarkers),
+        currentMedications: ensureArray(result.currentMedications),
+        allergies: ensureArray(result.allergies)
+      };
+      
+      setAnalysisResults(normalizedResults);
       clearInterval(interval);
       setProgress(100);
       
