@@ -1,5 +1,5 @@
 
-import { FileText, FlaskConical, HeartPulse, Users, ShieldAlert } from "lucide-react";
+import { FileText, FlaskConical, HeartPulse, Users, ShieldAlert, Activity } from "lucide-react";
 import FeatureCard from "./FeatureCard";
 
 const Features = () => {
@@ -33,6 +33,12 @@ const Features = () => {
       description: "Identify possible side effects and detect harmful drug interactions before prescribing using predictive AI models.",
       icon: <ShieldAlert className="h-6 w-6" />,
       link: "/side-effects"
+    },
+    {
+      title: "Disease Prediction",
+      description: "AI-powered analysis to predict diseases and health conditions based on patient symptoms and genetic markers.",
+      icon: <Activity className="h-6 w-6" />,
+      link: "/disease-prediction"
     }
   ];
 

@@ -6,62 +6,76 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShieldAlert, Search, ArrowRightLeft, CheckCircle, Sparkles, Download } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
+import { ShieldAlert, Search, ArrowRightLeft, CheckCircle, Sparkles, Download, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Progress } from "@/components/ui/progress";
 
-// Gemini API key
-const GEMINI_API_KEY = 'AIzaSyCzxMxWDQIDTuklVyrVDbsRzHEa6Z9y_U8';
+// Groq API key
+const GROQ_API_KEY = "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";
 
 const SideEffects = () => {
   const [drugName, setDrugName] = useState("");
   const [interactionDrugs, setInteractionDrugs] = useState(["", ""]);
   const [isLoading, setIsLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [showResults, setShowResults] = useState(false);
-  const [sideEffects, setSideEffects] = useState([]);
-  const [interactions, setInteractions] = useState([]);
+  const [sideEffects, setSideEffects] = useState<any[]>([]);
+  const [interactions, setInteractions] = useState<any[]>([]);
+  const { toast } = useToast();
 
-  const searchGemini = async (prompt) => {
+  const searchWithGroq = async (prompt: string) => {
     try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: prompt
-                  }
-                ]
-              }
-            ],
-            generationConfig: {
-              temperature: 0.2,
-              topP: 0.8,
-              topK: 40,
-              maxOutputTokens: 1024,
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${GROQ_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "llama3-70b-8192",
+          messages: [
+            {
+              role: "system",
+              content: "You are a medical AI assistant specialized in analyzing drug side effects and interactions. Return data in valid JSON format only."
+            },
+            {
+              role: "user",
+              content: prompt
             }
-          }),
-        }
-      );
+          ],
+          temperature: 0.3,
+          max_tokens: 2048
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`API request failed with status ${response.status}`);
+      }
 
       const data = await response.json();
-      console.log("Gemini API response:", data);
+      console.log("Groq API response:", data);
       
-      if (data.candidates && data.candidates[0].content.parts[0].text) {
-        return data.candidates[0].content.parts[0].text;
-      } else {
-        throw new Error("No response from Gemini API");
+      const content = data.choices[0].message.content;
+      
+      try {
+        // Extract JSON from the response
+        const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/) || 
+                         content.match(/```\n([\s\S]*?)\n```/) ||
+                         content.match(/{[\s\S]*}/);
+        
+        const jsonStr = jsonMatch ? jsonMatch[1] || jsonMatch[0] : content;
+        const cleanedJson = jsonStr.replace(/```[a-z]*\n?/g, '').trim();
+        
+        return JSON.parse(cleanedJson);
+      } catch (jsonError) {
+        console.error("Error parsing JSON:", jsonError, content);
+        throw new Error("Could not parse response from AI service");
       }
     } catch (error) {
-      console.error("Error querying Gemini API:", error);
+      console.error("Error querying Groq API:", error);
       toast({
         title: "API Error",
-        description: "Failed to get response from Gemini. Please try again.",
+        description: "Failed to get response from API. Please try again.",
         variant: "destructive",
       });
       return null;
@@ -79,6 +93,19 @@ const SideEffects = () => {
     }
 
     setIsLoading(true);
+    setProgress(0);
+    
+    // Setup progress simulation
+    const interval = setInterval(() => {
+      setProgress(prev => {
+        const newProgress = prev + 10;
+        if (newProgress >= 90) {
+          clearInterval(interval);
+          return 90;
+        }
+        return newProgress;
+      });
+    }, 300);
     
     try {
       const prompt = `Please provide detailed information about the side effects of ${drugName}. Format the response as a JSON array with the following structure for each side effect:
@@ -88,44 +115,52 @@ const SideEffects = () => {
       ]
       Include only the JSON array in your response, no other text.`;
       
-      const result = await searchGemini(prompt);
+      const result = await searchWithGroq(prompt);
       
       if (result) {
-        try {
-          // Extract JSON from the response
-          const jsonStr = result.trim().replace(/```json|```/g, '').trim();
-          const parsedResults = JSON.parse(jsonStr);
-          setSideEffects(parsedResults);
-          setShowResults(true);
-          toast({
-            title: "Prediction complete",
-            description: "Side effect prediction analysis has been completed successfully.",
-          });
-        } catch (jsonError) {
-          console.error("Error parsing JSON:", jsonError, result);
-          // Fallback to default side effects
-          setSideEffects([
-            { name: "Headache", probability: 0.72, severity: "Mild", management: "Over-the-counter pain relievers, rest" },
-            { name: "Nausea", probability: 0.65, severity: "Moderate", management: "Take with food, anti-nausea medication" },
-            { name: "Dizziness", probability: 0.58, severity: "Moderate", management: "Avoid driving, change positions slowly" },
-            { name: "Fatigue", probability: 0.45, severity: "Mild", management: "Adequate rest, moderate exercise" },
-            { name: "Rash", probability: 0.32, severity: "Mild to Severe", management: "Discontinue if severe, topical steroids" }
-          ]);
-          setShowResults(true);
-          toast({
-            title: "Prediction complete",
-            description: "Side effect prediction analysis has been completed with default data.",
-          });
-        }
+        setSideEffects(Array.isArray(result) ? result : []);
+        setShowResults(true);
+        setProgress(100);
+        toast({
+          title: "Prediction complete",
+          description: "Side effect prediction analysis has been completed successfully.",
+        });
+      } else {
+        // Fallback to default side effects
+        setSideEffects([
+          { name: "Headache", probability: 0.72, severity: "Mild", management: "Over-the-counter pain relievers, rest" },
+          { name: "Nausea", probability: 0.65, severity: "Moderate", management: "Take with food, anti-nausea medication" },
+          { name: "Dizziness", probability: 0.58, severity: "Moderate", management: "Avoid driving, change positions slowly" },
+          { name: "Fatigue", probability: 0.45, severity: "Mild", management: "Adequate rest, moderate exercise" },
+          { name: "Rash", probability: 0.32, severity: "Mild to Severe", management: "Discontinue if severe, topical steroids" }
+        ]);
+        setShowResults(true);
+        setProgress(100);
+        toast({
+          title: "Using default data",
+          description: "Using sample side effect data for demonstration.",
+        });
       }
     } catch (error) {
       console.error("Error in prediction:", error);
       toast({
         title: "Error",
-        description: "An error occurred during prediction. Please try again.",
+        description: "An error occurred during prediction. Using sample data instead.",
         variant: "destructive",
       });
+      
+      // Fallback data
+      setSideEffects([
+        { name: "Headache", probability: 0.72, severity: "Mild", management: "Over-the-counter pain relievers, rest" },
+        { name: "Nausea", probability: 0.65, severity: "Moderate", management: "Take with food, anti-nausea medication" },
+        { name: "Dizziness", probability: 0.58, severity: "Moderate", management: "Avoid driving, change positions slowly" },
+        { name: "Fatigue", probability: 0.45, severity: "Mild", management: "Adequate rest, moderate exercise" },
+        { name: "Rash", probability: 0.32, severity: "Mild to Severe", management: "Discontinue if severe, topical steroids" }
+      ]);
+      setShowResults(true);
+      setProgress(100);
     } finally {
+      clearInterval(interval);
       setIsLoading(false);
     }
   };
@@ -141,6 +176,19 @@ const SideEffects = () => {
     }
 
     setIsLoading(true);
+    setProgress(0);
+    
+    // Setup progress simulation
+    const interval = setInterval(() => {
+      setProgress(prev => {
+        const newProgress = prev + 10;
+        if (newProgress >= 90) {
+          clearInterval(interval);
+          return 90;
+        }
+        return newProgress;
+      });
+    }, 300);
     
     try {
       const prompt = `Please provide detailed information about drug interactions between ${interactionDrugs[0]} and ${interactionDrugs[1]}. Format the response as a JSON array with the following structure:
@@ -156,46 +204,56 @@ const SideEffects = () => {
       ]
       Include only the JSON array in your response, no other text.`;
       
-      const result = await searchGemini(prompt);
+      const result = await searchWithGroq(prompt);
       
       if (result) {
-        try {
-          // Extract JSON from the response
-          const jsonStr = result.trim().replace(/```json|```/g, '').trim();
-          const parsedResults = JSON.parse(jsonStr);
-          setInteractions(parsedResults);
-          setShowResults(true);
-          toast({
-            title: "Interaction check complete",
-            description: "Drug interaction analysis has been completed successfully.",
-          });
-        } catch (jsonError) {
-          console.error("Error parsing JSON:", jsonError, result);
-          // Fallback to default interactions
-          setInteractions([
-            { 
-              drug1: interactionDrugs[0], 
-              drug2: interactionDrugs[1], 
-              severity: "Moderate", 
-              effect: "May reduce effectiveness and increase risk of side effects", 
-              recommendation: "Monitor closely and adjust dosage if needed" 
-            }
-          ]);
-          setShowResults(true);
-          toast({
-            title: "Interaction check complete",
-            description: "Drug interaction analysis has been completed with default data.",
-          });
-        }
+        setInteractions(Array.isArray(result) ? result : []);
+        setShowResults(true);
+        setProgress(100);
+        toast({
+          title: "Interaction check complete",
+          description: "Drug interaction analysis has been completed successfully.",
+        });
+      } else {
+        // Fallback to default interactions
+        setInteractions([
+          { 
+            drug1: interactionDrugs[0], 
+            drug2: interactionDrugs[1], 
+            severity: "Moderate", 
+            effect: "May reduce effectiveness and increase risk of side effects", 
+            recommendation: "Monitor closely and adjust dosage if needed" 
+          }
+        ]);
+        setShowResults(true);
+        setProgress(100);
+        toast({
+          title: "Using default data",
+          description: "Using sample interaction data for demonstration.",
+        });
       }
     } catch (error) {
       console.error("Error in interaction check:", error);
       toast({
         title: "Error",
-        description: "An error occurred during interaction check. Please try again.",
+        description: "An error occurred during interaction check. Using sample data instead.",
         variant: "destructive",
       });
+      
+      // Fallback data
+      setInteractions([
+        { 
+          drug1: interactionDrugs[0], 
+          drug2: interactionDrugs[1], 
+          severity: "Moderate", 
+          effect: "May reduce effectiveness and increase risk of side effects", 
+          recommendation: "Monitor closely and adjust dosage if needed" 
+        }
+      ]);
+      setShowResults(true);
+      setProgress(100);
     } finally {
+      clearInterval(interval);
       setIsLoading(false);
     }
   };
@@ -266,7 +324,10 @@ const SideEffects = () => {
                       disabled={isLoading}
                     >
                       {isLoading ? (
-                        <>Analyzing...</>
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Analyzing...
+                        </>
                       ) : (
                         <>
                           <ShieldAlert className="mr-2 h-4 w-4" />
@@ -274,6 +335,16 @@ const SideEffects = () => {
                         </>
                       )}
                     </Button>
+                    
+                    {isLoading && (
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-xs mb-1">
+                          <span>Processing data</span>
+                          <span>{progress}%</span>
+                        </div>
+                        <Progress value={progress} className="h-2" />
+                      </div>
+                    )}
                   </div>
                 </TabsContent>
                 
@@ -301,7 +372,10 @@ const SideEffects = () => {
                       disabled={isLoading}
                     >
                       {isLoading ? (
-                        <>Analyzing...</>
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Analyzing...
+                        </>
                       ) : (
                         <>
                           <ArrowRightLeft className="mr-2 h-4 w-4" />
@@ -309,6 +383,16 @@ const SideEffects = () => {
                         </>
                       )}
                     </Button>
+                    
+                    {isLoading && (
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-xs mb-1">
+                          <span>Processing data</span>
+                          <span>{progress}%</span>
+                        </div>
+                        <Progress value={progress} className="h-2" />
+                      </div>
+                    )}
                   </div>
                 </TabsContent>
               </Tabs>
@@ -423,28 +507,34 @@ const SideEffects = () => {
           </section>
         )}
 
-        {/* AI Analysis section */}
+        {/* Disease Prediction Section - Replacing Clinical Trials */}
         <section className="bg-gray-50 py-16 px-4">
           <div className="container max-w-6xl mx-auto">
             <div className="bg-white rounded-xl shadow-sm border p-8 flex flex-col md:flex-row gap-8 items-center">
               <div className="flex-1">
                 <div className="inline-flex items-center px-3 py-1 rounded-full border border-primary/10 bg-primary/5 text-primary-600 mb-4">
                   <Sparkles className="h-4 w-4 mr-2" />
-                  <span className="text-sm font-medium">Advanced Analysis</span>
+                  <span className="text-sm font-medium">AI Disease Prediction</span>
                 </div>
                 <h2 className="text-2xl font-bold mb-4">
-                  Personalized Risk Assessment
+                  Predict Diseases from Patient Data
                 </h2>
                 <p className="text-muted-foreground mb-6">
-                  Our AI system analyzes patient data, including age, weight, existing conditions, and current medications to provide a personalized risk assessment for potential side effects.
+                  Our AI system analyzes patient data to predict potential diseases and health risks. Upload patient information or proceed to our disease prediction page for detailed analysis.
                 </p>
-                <Button>
-                  Upload Patient Profile
+                <Button onClick={() => window.location.href = '/disease-prediction'}>
+                  Go to Disease Prediction
                 </Button>
               </div>
               <div className="flex-1 flex justify-center">
-                <div className="rounded-lg overflow-hidden border shadow-sm h-72 w-full max-w-md bg-gray-100 flex items-center justify-center">
-                  <span className="text-muted-foreground">Risk Assessment Visualization</span>
+                <div className="rounded-lg overflow-hidden border shadow-sm h-72 w-full max-w-md bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
+                  <div className="text-center p-6">
+                    <Sparkles className="h-12 w-12 mx-auto text-primary mb-4" />
+                    <h3 className="text-lg font-medium mb-2">Advanced Disease Prediction</h3>
+                    <p className="text-sm text-muted-foreground">
+                      AI-powered analysis using patient symptoms, medical history, and genetic markers to predict diseases with high accuracy
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

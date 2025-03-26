@@ -10,6 +10,7 @@ import DrugRecommendation from "./pages/DrugRecommendation";
 import DrugDiscovery from "./pages/DrugDiscovery";
 import DiseasePrediction from "./pages/DiseasePrediction";
 import SideEffects from "./pages/SideEffects";
+import ClinicalTrials from "./pages/ClinicalTrials";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
           <Route path="/drug-discovery" element={<DrugDiscovery />} />
           <Route path="/disease-prediction" element={<DiseasePrediction />} />
           <Route path="/side-effects" element={<SideEffects />} />
+          <Route path="/clinical-trials" element={<ClinicalTrials />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -50,11 +50,11 @@ const PatientAnalysis = () => {
           messages: [
             {
               role: "system",
-              content: "You are a medical AI assistant specialized in analyzing patient reports. Extract key information and organize it into structured data."
+              content: "You are a medical AI assistant specialized in analyzing patient reports. Extract key information and organize it into structured data. Return a JSON object with demographics, symptoms, medicalHistory, geneticMarkers, currentMedications, and allergies properties."
             },
             {
               role: "user",
-              content: `Analyze this patient report and extract key information into structured format with demographics, symptoms, medical history, genetic markers, current medications, and allergies categories. ${patientInfo}`
+              content: `Analyze this patient report and extract key information into JSON format with demographics, symptoms, medicalHistory, geneticMarkers, currentMedications, and allergies fields: ${patientInfo}`
             }
           ],
           temperature: 0.3,
@@ -69,18 +69,144 @@ const PatientAnalysis = () => {
       const data = await response.json();
       console.log("Groq API response:", data);
       
+      // Get the content from the response
       const content = data.choices[0].message.content;
+      
+      // Instead of trying to parse directly, extract the JSON part from the response
       try {
-        // Try to extract JSON from the response which might be markdown formatted
-        const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/) || 
-                         content.match(/```\n([\s\S]*?)\n```/) ||
+        // More robust regex to extract JSON
+        const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || 
+                         content.match(/```\s*([\s\S]*?)\s*```/) ||
                          content.match(/{[\s\S]*}/);
         
+        // If a match is found, use it, otherwise try to parse the whole content
         const jsonStr = jsonMatch ? jsonMatch[1] || jsonMatch[0] : content;
-        return JSON.parse(jsonStr.trim());
+        
+        // Process the JSON string to remove any markdown or extra text
+        const cleanedJson = jsonStr.replace(/```[a-z]*\n?/g, '').trim();
+        
+        // Try to parse the cleaned JSON
+        try {
+          return JSON.parse(cleanedJson);
+        } catch (innerError) {
+          console.error("Failed to parse cleaned JSON:", innerError);
+          
+          // One last attempt - try to find anything that looks like a JSON object
+          const lastAttempt = cleanedJson.match(/{[\s\S]*}/);
+          if (lastAttempt) {
+            return JSON.parse(lastAttempt[0]);
+          }
+          
+          throw new Error("Could not parse response from AI service");
+        }
       } catch (jsonError) {
-        console.error("Error parsing JSON from Groq response:", jsonError);
-        throw new Error("Could not parse response from AI service");
+        console.error("Error parsing JSON from Groq response:", jsonError, content);
+        
+        // Create a structured object from the unstructured text response
+        const sections = content.split(/\*\*([^*]+)\*\*/g).filter(Boolean);
+        const result: any = {
+          demographics: {},
+          symptoms: [],
+          medicalHistory: [],
+          geneticMarkers: [],
+          currentMedications: [],
+          allergies: []
+        };
+        
+        let currentSection = "";
+        
+        for (let i = 0; i < sections.length; i++) {
+          const section = sections[i].trim();
+          
+          if (section === "Demographics") {
+            currentSection = "demographics";
+            
+            // Extract the demographic data
+            const demographicText = sections[i + 1] || "";
+            const lines = demographicText.split('\n').filter(Boolean);
+            
+            lines.forEach(line => {
+              const parts = line.split(':').map(part => part.trim());
+              if (parts.length >= 2) {
+                const key = parts[0].toLowerCase().replace(/\*/g, '').replace(/ /g, '');
+                const value = parts[1].replace(/\*/g, '');
+                result.demographics[key] = value;
+              }
+            });
+            
+          } else if (section === "Symptoms") {
+            currentSection = "symptoms";
+            
+            // Extract symptoms
+            const symptomsText = sections[i + 1] || "";
+            const lines = symptomsText.split('\n').filter(Boolean);
+            
+            lines.forEach(line => {
+              const symptom = line.replace(/^\s*\*\s*/, '').trim();
+              if (symptom) {
+                result.symptoms.push(symptom);
+              }
+            });
+            
+          } else if (section === "Medical History") {
+            currentSection = "medicalHistory";
+            
+            // Extract medical history
+            const historyText = sections[i + 1] || "";
+            const lines = historyText.split('\n').filter(Boolean);
+            
+            lines.forEach(line => {
+              const history = line.replace(/^\s*\*\s*/, '').replace(/^\s*\+\s*/, '').trim();
+              if (history && !history.includes('Chronic Conditions') && !history.includes('Past Surgeries') && !history.includes('Family History')) {
+                result.medicalHistory.push(history);
+              }
+            });
+            
+          } else if (section === "Genetic Markers") {
+            currentSection = "geneticMarkers";
+            
+            // Extract genetic markers
+            const markersText = sections[i + 1] || "";
+            const lines = markersText.split('\n').filter(Boolean);
+            
+            lines.forEach(line => {
+              const marker = line.replace(/^\s*\*\s*/, '').trim();
+              if (marker && !marker.includes('Other Genetic Conditions')) {
+                result.geneticMarkers.push(marker);
+              }
+            });
+            
+          } else if (section === "Current Medications") {
+            currentSection = "currentMedications";
+            
+            // Extract medications
+            const medsText = sections[i + 1] || "";
+            const lines = medsText.split('\n').filter(Boolean);
+            
+            lines.forEach(line => {
+              const medication = line.replace(/^\s*\*\s*/, '').trim();
+              if (medication) {
+                result.currentMedications.push(medication);
+              }
+            });
+            
+          } else if (section === "Allergies") {
+            currentSection = "allergies";
+            
+            // Extract allergies
+            const allergiesText = sections[i + 1] || "";
+            const lines = allergiesText.split('\n').filter(Boolean);
+            
+            lines.forEach(line => {
+              const allergy = line.replace(/^\s*\*\s*/, '').trim();
+              if (allergy && !allergy.includes('None mentioned')) {
+                result.allergies.push(allergy);
+              }
+            });
+          }
+        }
+        
+        return result;
       }
     } catch (error) {
       console.error("Error calling Groq API:", error);
@@ -88,7 +214,7 @@ const PatientAnalysis = () => {
     }
   };
 
-  // Simulating analysis process with progress updates
+  // Analysis process with progress updates
   const simulateAnalysis = async () => {
     if (!file && !patientText) {
       toast({
@@ -194,6 +320,17 @@ const PatientAnalysis = () => {
       title: "Download started",
       description: "Patient analysis results have been downloaded",
     });
+  };
+
+  // Helper to safely render object values
+  const renderValue = (value: any): string => {
+    if (value === undefined || value === null) {
+      return "Not specified";
+    }
+    if (typeof value === "object") {
+      return JSON.stringify(value);
+    }
+    return String(value);
   };
 
   return (
@@ -317,12 +454,12 @@ const PatientAnalysis = () => {
                           <h3 className="text-sm font-medium text-muted-foreground mb-2">Demographics</h3>
                           <div className="bg-gray-50 rounded-lg p-4">
                             <div className="grid grid-cols-2 gap-2 text-sm">
-                              <p className="font-medium">Age:</p>
-                              <p>{analysisResults.demographics.age}</p>
-                              <p className="font-medium">Gender:</p>
-                              <p>{analysisResults.demographics.gender}</p>
-                              <p className="font-medium">Ethnicity:</p>
-                              <p>{analysisResults.demographics.ethnicity}</p>
+                              {Object.entries(analysisResults.demographics || {}).map(([key, value]) => (
+                                <React.Fragment key={key}>
+                                  <p className="font-medium">{key.charAt(0).toUpperCase() + key.slice(1)}:</p>
+                                  <p>{renderValue(value)}</p>
+                                </React.Fragment>
+                              ))}
                             </div>
                           </div>
                         </div>
@@ -330,7 +467,7 @@ const PatientAnalysis = () => {
                         <div>
                           <h3 className="text-sm font-medium text-muted-foreground mb-2">Symptoms</h3>
                           <ul className="bg-gray-50 rounded-lg p-4 space-y-2">
-                            {analysisResults.symptoms.map((symptom: string, i: number) => (
+                            {(analysisResults.symptoms || []).map((symptom: string, i: number) => (
                               <li key={i} className="flex items-start text-sm gap-2">
                                 <span className="text-primary bg-primary-50 p-1 rounded-full">
                                   <Check className="h-3 w-3" />
@@ -344,7 +481,7 @@ const PatientAnalysis = () => {
                         <div>
                           <h3 className="text-sm font-medium text-muted-foreground mb-2">Medical History</h3>
                           <ul className="bg-gray-50 rounded-lg p-4 space-y-2">
-                            {analysisResults.medicalHistory.map((item: string, i: number) => (
+                            {(analysisResults.medicalHistory || []).map((item: string, i: number) => (
                               <li key={i} className="flex items-start text-sm gap-2">
                                 <span className="text-primary bg-primary-50 p-1 rounded-full">
                                   <Check className="h-3 w-3" />
@@ -360,7 +497,7 @@ const PatientAnalysis = () => {
                         <div>
                           <h3 className="text-sm font-medium text-muted-foreground mb-2">Genetic Markers</h3>
                           <ul className="bg-gray-50 rounded-lg p-4 space-y-2">
-                            {analysisResults.geneticMarkers.map((marker: string, i: number) => (
+                            {(analysisResults.geneticMarkers || []).map((marker: string, i: number) => (
                               <li key={i} className="flex items-start text-sm gap-2">
                                 <span className="text-primary bg-primary-50 p-1 rounded-full">
                                   <Check className="h-3 w-3" />
@@ -374,7 +511,7 @@ const PatientAnalysis = () => {
                         <div>
                           <h3 className="text-sm font-medium text-muted-foreground mb-2">Current Medications</h3>
                           <ul className="bg-gray-50 rounded-lg p-4 space-y-2">
-                            {analysisResults.currentMedications.map((med: string, i: number) => (
+                            {(analysisResults.currentMedications || []).map((med: string, i: number) => (
                               <li key={i} className="flex items-start text-sm gap-2">
                                 <span className="text-primary bg-primary-50 p-1 rounded-full">
                                   <Check className="h-3 w-3" />
@@ -388,14 +525,18 @@ const PatientAnalysis = () => {
                         <div>
                           <h3 className="text-sm font-medium text-muted-foreground mb-2">Allergies</h3>
                           <ul className="bg-gray-50 rounded-lg p-4 space-y-2">
-                            {analysisResults.allergies.map((allergy: string, i: number) => (
-                              <li key={i} className="flex items-start text-sm gap-2">
-                                <span className="text-destructive bg-destructive/10 p-1 rounded-full">
-                                  <X className="h-3 w-3" />
-                                </span>
-                                {allergy}
-                              </li>
-                            ))}
+                            {(analysisResults.allergies || []).length > 0 ? (
+                              (analysisResults.allergies || []).map((allergy: string, i: number) => (
+                                <li key={i} className="flex items-start text-sm gap-2">
+                                  <span className="text-destructive bg-destructive/10 p-1 rounded-full">
+                                    <X className="h-3 w-3" />
+                                  </span>
+                                  {allergy}
+                                </li>
+                              ))
+                            ) : (
+                              <li className="text-sm text-muted-foreground">No known allergies</li>
+                            )}
                           </ul>
                         </div>
                       </div>
