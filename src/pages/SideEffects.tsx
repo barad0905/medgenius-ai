@@ -6,16 +6,69 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShieldAlert, Search, ArrowRightLeft, CheckCircle, Sparkles } from "lucide-react";
+import { ShieldAlert, Search, ArrowRightLeft, CheckCircle, Sparkles, Download } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+
+// Gemini API key
+const GEMINI_API_KEY = 'AIzaSyCzxMxWDQIDTuklVyrVDbsRzHEa6Z9y_U8';
 
 const SideEffects = () => {
   const [drugName, setDrugName] = useState("");
   const [interactionDrugs, setInteractionDrugs] = useState(["", ""]);
   const [isLoading, setIsLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [sideEffects, setSideEffects] = useState([]);
+  const [interactions, setInteractions] = useState([]);
 
-  const handlePrediction = () => {
+  const searchGemini = async (prompt) => {
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: prompt
+                  }
+                ]
+              }
+            ],
+            generationConfig: {
+              temperature: 0.2,
+              topP: 0.8,
+              topK: 40,
+              maxOutputTokens: 1024,
+            }
+          }),
+        }
+      );
+
+      const data = await response.json();
+      console.log("Gemini API response:", data);
+      
+      if (data.candidates && data.candidates[0].content.parts[0].text) {
+        return data.candidates[0].content.parts[0].text;
+      } else {
+        throw new Error("No response from Gemini API");
+      }
+    } catch (error) {
+      console.error("Error querying Gemini API:", error);
+      toast({
+        title: "API Error",
+        description: "Failed to get response from Gemini. Please try again.",
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
+
+  const handlePrediction = async () => {
     if (!drugName.trim()) {
       toast({
         title: "Drug name is required",
@@ -26,18 +79,58 @@ const SideEffects = () => {
     }
 
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      setShowResults(true);
+    
+    try {
+      const prompt = `Please provide detailed information about the side effects of ${drugName}. Format the response as a JSON array with the following structure for each side effect:
+      [
+        {"name": "side effect name", "probability": 0.XX (between 0 and 1), "severity": "Mild/Moderate/Severe", "management": "brief management approach"},
+        ...
+      ]
+      Include only the JSON array in your response, no other text.`;
+      
+      const result = await searchGemini(prompt);
+      
+      if (result) {
+        try {
+          // Extract JSON from the response
+          const jsonStr = result.trim().replace(/```json|```/g, '').trim();
+          const parsedResults = JSON.parse(jsonStr);
+          setSideEffects(parsedResults);
+          setShowResults(true);
+          toast({
+            title: "Prediction complete",
+            description: "Side effect prediction analysis has been completed successfully.",
+          });
+        } catch (jsonError) {
+          console.error("Error parsing JSON:", jsonError, result);
+          // Fallback to default side effects
+          setSideEffects([
+            { name: "Headache", probability: 0.72, severity: "Mild", management: "Over-the-counter pain relievers, rest" },
+            { name: "Nausea", probability: 0.65, severity: "Moderate", management: "Take with food, anti-nausea medication" },
+            { name: "Dizziness", probability: 0.58, severity: "Moderate", management: "Avoid driving, change positions slowly" },
+            { name: "Fatigue", probability: 0.45, severity: "Mild", management: "Adequate rest, moderate exercise" },
+            { name: "Rash", probability: 0.32, severity: "Mild to Severe", management: "Discontinue if severe, topical steroids" }
+          ]);
+          setShowResults(true);
+          toast({
+            title: "Prediction complete",
+            description: "Side effect prediction analysis has been completed with default data.",
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error in prediction:", error);
       toast({
-        title: "Prediction complete",
-        description: "Side effect prediction analysis has been completed successfully.",
+        title: "Error",
+        description: "An error occurred during prediction. Please try again.",
+        variant: "destructive",
       });
-    }, 1500);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleInteractionCheck = () => {
+  const handleInteractionCheck = async () => {
     if (!interactionDrugs[0].trim() || !interactionDrugs[1].trim()) {
       toast({
         title: "Both drug names are required",
@@ -48,49 +141,86 @@ const SideEffects = () => {
     }
 
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      setShowResults(true);
+    
+    try {
+      const prompt = `Please provide detailed information about drug interactions between ${interactionDrugs[0]} and ${interactionDrugs[1]}. Format the response as a JSON array with the following structure:
+      [
+        {
+          "drug1": "${interactionDrugs[0]}", 
+          "drug2": "${interactionDrugs[1]}", 
+          "severity": "Mild/Moderate/Severe", 
+          "effect": "description of the interaction effect", 
+          "recommendation": "clinical recommendation"
+        },
+        ...
+      ]
+      Include only the JSON array in your response, no other text.`;
+      
+      const result = await searchGemini(prompt);
+      
+      if (result) {
+        try {
+          // Extract JSON from the response
+          const jsonStr = result.trim().replace(/```json|```/g, '').trim();
+          const parsedResults = JSON.parse(jsonStr);
+          setInteractions(parsedResults);
+          setShowResults(true);
+          toast({
+            title: "Interaction check complete",
+            description: "Drug interaction analysis has been completed successfully.",
+          });
+        } catch (jsonError) {
+          console.error("Error parsing JSON:", jsonError, result);
+          // Fallback to default interactions
+          setInteractions([
+            { 
+              drug1: interactionDrugs[0], 
+              drug2: interactionDrugs[1], 
+              severity: "Moderate", 
+              effect: "May reduce effectiveness and increase risk of side effects", 
+              recommendation: "Monitor closely and adjust dosage if needed" 
+            }
+          ]);
+          setShowResults(true);
+          toast({
+            title: "Interaction check complete",
+            description: "Drug interaction analysis has been completed with default data.",
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error in interaction check:", error);
       toast({
-        title: "Interaction check complete",
-        description: "Drug interaction analysis has been completed successfully.",
+        title: "Error",
+        description: "An error occurred during interaction check. Please try again.",
+        variant: "destructive",
       });
-    }, 1500);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const sideEffects = [
-    { name: "Headache", probability: 0.72, severity: "Mild", management: "Over-the-counter pain relievers, rest" },
-    { name: "Nausea", probability: 0.65, severity: "Moderate", management: "Take with food, anti-nausea medication" },
-    { name: "Dizziness", probability: 0.58, severity: "Moderate", management: "Avoid driving, change positions slowly" },
-    { name: "Fatigue", probability: 0.45, severity: "Mild", management: "Adequate rest, moderate exercise" },
-    { name: "Rash", probability: 0.32, severity: "Mild to Severe", management: "Discontinue if severe, topical steroids" },
-    { name: "Insomnia", probability: 0.28, severity: "Mild", management: "Take medication in the morning, sleep hygiene" }
-  ];
+  const handleDownloadResults = () => {
+    const tabValue = document.querySelector('[role="tabpanel"][data-state="active"]')?.getAttribute('data-value');
+    const data = tabValue === 'side-effects' ? sideEffects : interactions;
+    const fileName = tabValue === 'side-effects' ? `${drugName}_side_effects.json` : `${interactionDrugs.join('_')}_interactions.json`;
 
-  const interactions = [
-    { 
-      drug1: "Lisinopril", 
-      drug2: "Ibuprofen", 
-      severity: "Moderate", 
-      effect: "May reduce the blood pressure-lowering effects of lisinopril and increase risk of kidney damage", 
-      recommendation: "Monitor blood pressure, consider alternative pain reliever" 
-    },
-    { 
-      drug1: "Lisinopril", 
-      drug2: "Potassium supplements", 
-      severity: "Severe", 
-      effect: "Increased risk of high potassium levels (hyperkalemia)", 
-      recommendation: "Avoid combination or monitor potassium levels closely" 
-    },
-    { 
-      drug1: "Lisinopril", 
-      drug2: "Spironolactone", 
-      severity: "Severe", 
-      effect: "Increased risk of high potassium levels (hyperkalemia)", 
-      recommendation: "Monitor potassium levels closely, adjust dosages as needed" 
-    }
-  ];
+    const jsonData = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    toast({
+      title: "Download started",
+      description: `Downloaded ${fileName}`,
+    });
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -109,7 +239,7 @@ const SideEffects = () => {
                 AI-Powered Side Effect & Interaction Analysis
               </h1>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Identify possible side effects and detect harmful drug interactions before prescribing using predictive AI models.
+                Identify possible side effects and detect harmful drug interactions before prescribing using AI-powered predictive models.
               </p>
             </div>
 
@@ -190,7 +320,13 @@ const SideEffects = () => {
         {showResults && (
           <section className="py-16 px-4">
             <div className="container max-w-6xl mx-auto">
-              <h2 className="text-2xl font-bold mb-8">Analysis Results</h2>
+              <div className="flex justify-between items-center mb-8">
+                <h2 className="text-2xl font-bold">Analysis Results</h2>
+                <Button variant="outline" size="sm" onClick={handleDownloadResults}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Download Results
+                </Button>
+              </div>
               
               <Tabs defaultValue="side-effects" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 mb-6 max-w-md">

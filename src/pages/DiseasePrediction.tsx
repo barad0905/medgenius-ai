@@ -1,29 +1,25 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import GlassCard from "@/components/ui/GlassCard";
-import { FileUp, FileText, Check, X, Download, Loader2 } from "lucide-react";
+import { FileUp, FileText, Check, X, Download, Loader2, Dna, Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 
 // Groq API key
 const GROQ_API_KEY = "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";
 
-const PatientAnalysis = () => {
+const DiseasePrediction = () => {
   const [file, setFile] = useState<File | null>(null);
   const [patientText, setPatientText] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [analysisResults, setAnalysisResults] = useState<any>(null);
   const { toast } = useToast();
-
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
 
   // Simulating file upload handling
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,11 +46,11 @@ const PatientAnalysis = () => {
           messages: [
             {
               role: "system",
-              content: "You are a medical AI assistant specialized in analyzing patient reports. Extract key information and organize it into structured data."
+              content: "You are a medical AI assistant specialized in disease prediction and analysis based on patient symptoms, medical history, and genetic markers. Provide a comprehensive analysis with high accuracy."
             },
             {
               role: "user",
-              content: `Analyze this patient report and extract key information into structured format with demographics, symptoms, medical history, genetic markers, current medications, and allergies categories. ${patientInfo}`
+              content: `Based on these patient details, provide a disease prediction analysis with probability percentages, detection of genetic risk factors, and health recommendations. Format your response as a JSON object with these sections. ${patientInfo}`
             }
           ],
           temperature: 0.3,
@@ -88,8 +84,8 @@ const PatientAnalysis = () => {
     }
   };
 
-  // Simulating analysis process with progress updates
-  const simulateAnalysis = async () => {
+  // Analysis process with progress updates
+  const handleAnalysis = async () => {
     if (!file && !patientText) {
       toast({
         variant: "destructive",
@@ -128,49 +124,17 @@ const PatientAnalysis = () => {
       
       toast({
         title: "Analysis complete",
-        description: "Patient report analysis has been completed successfully.",
+        description: "AI disease prediction analysis has been completed successfully.",
       });
     } catch (error) {
       console.error("Analysis error:", error);
       toast({
         variant: "destructive",
         title: "Analysis failed",
-        description: "We'll use a sample analysis for demonstration purposes.",
+        description: "Error during analysis. Please try again.",
       });
-      
-      // Fallback to sample data if API fails
-      setAnalysisResults({
-        demographics: {
-          age: 56,
-          gender: "Male",
-          ethnicity: "Caucasian"
-        },
-        symptoms: [
-          "Persistent cough",
-          "Fever (101.2°F)",
-          "Shortness of breath",
-          "Fatigue"
-        ],
-        medicalHistory: [
-          "Hypertension (diagnosed 2015)",
-          "Type 2 Diabetes (diagnosed 2018)"
-        ],
-        geneticMarkers: [
-          "CYP2D6 - Intermediate metabolizer",
-          "SLCO1B1 - Reduced function"
-        ],
-        currentMedications: [
-          "Lisinopril 10mg daily",
-          "Metformin 500mg twice daily"
-        ],
-        allergies: [
-          "Penicillin (severe rash)",
-          "Shellfish"
-        ]
-      });
-      
       clearInterval(interval);
-      setProgress(100);
+      setProgress(0);
     } finally {
       setIsAnalyzing(false);
     }
@@ -185,14 +149,14 @@ const PatientAnalysis = () => {
     
     const a = document.createElement('a');
     a.href = url;
-    a.download = "patient_analysis_results.json";
+    a.download = "disease_prediction_results.json";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     
     toast({
       title: "Download started",
-      description: "Patient analysis results have been downloaded",
+      description: "Disease prediction results have been downloaded",
     });
   };
 
@@ -204,10 +168,10 @@ const PatientAnalysis = () => {
         <div className="max-w-7xl mx-auto py-12">
           <div className="text-center max-w-3xl mx-auto mb-12">
             <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
-              Patient Report Analysis
+              Disease Prediction
             </h1>
             <p className="text-lg text-muted-foreground">
-              Extract key symptoms, medical history, and genetic information from patient reports using our advanced NLP technology.
+              AI-powered disease prediction and risk assessment based on patient symptoms, medical history, and genetic markers.
             </p>
           </div>
 
@@ -254,7 +218,7 @@ const PatientAnalysis = () => {
 
                   <Button 
                     className="w-full" 
-                    onClick={simulateAnalysis}
+                    onClick={handleAnalysis}
                     disabled={isAnalyzing}
                   >
                     {isAnalyzing ? (
@@ -264,8 +228,8 @@ const PatientAnalysis = () => {
                       </>
                     ) : (
                       <>
-                        <FileText className="mr-2 h-4 w-4" />
-                        Analyze Patient Data
+                        <Activity className="mr-2 h-4 w-4" />
+                        Predict Diseases
                       </>
                     )}
                   </Button>
@@ -286,7 +250,7 @@ const PatientAnalysis = () => {
             <div className="lg:col-span-3 animate-slide-up" style={{ animationDelay: "0.2s" }}>
               <GlassCard className="h-full">
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-semibold">Analysis Results</h2>
+                  <h2 className="text-xl font-semibold">Prediction Results</h2>
                   {analysisResults && (
                     <Button variant="outline" size="sm" onClick={handleDownloadResults}>
                       <Download className="mr-2 h-4 w-4" />
@@ -300,105 +264,88 @@ const PatientAnalysis = () => {
                     {isAnalyzing ? (
                       <div className="space-y-4">
                         <Loader2 className="h-10 w-10 mx-auto animate-spin text-primary" />
-                        <p>Processing patient data with AI...</p>
+                        <p>Analyzing patient data with advanced AI models...</p>
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        <FileText className="h-10 w-10 mx-auto text-muted-foreground" />
-                        <p>Upload or enter patient data to see analysis results</p>
+                        <Activity className="h-10 w-10 mx-auto text-muted-foreground" />
+                        <p>Upload or enter patient data to see disease predictions</p>
                       </div>
                     )}
                   </div>
                 ) : (
                   <div className="space-y-6 animate-fade-in">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-4">
-                        <div>
-                          <h3 className="text-sm font-medium text-muted-foreground mb-2">Demographics</h3>
-                          <div className="bg-gray-50 rounded-lg p-4">
-                            <div className="grid grid-cols-2 gap-2 text-sm">
-                              <p className="font-medium">Age:</p>
-                              <p>{analysisResults.demographics.age}</p>
-                              <p className="font-medium">Gender:</p>
-                              <p>{analysisResults.demographics.gender}</p>
-                              <p className="font-medium">Ethnicity:</p>
-                              <p>{analysisResults.demographics.ethnicity}</p>
+                    {/* Predicted Diseases */}
+                    <div>
+                      <h3 className="text-md font-medium text-primary mb-3">Predicted Diseases</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {analysisResults.predictedDiseases?.map((disease: any, i: number) => (
+                          <div key={i} className="bg-white border rounded-lg p-4 hover:shadow-md transition-shadow">
+                            <div className="flex justify-between items-start mb-2">
+                              <h4 className="font-semibold">{disease.name}</h4>
+                              <span className={`text-sm font-medium px-2 py-1 rounded-full ${
+                                disease.probability > 0.7 
+                                  ? "bg-red-50 text-red-600" 
+                                  : disease.probability > 0.4 
+                                    ? "bg-yellow-50 text-yellow-600" 
+                                    : "bg-green-50 text-green-600"
+                              }`}>
+                                {Math.round(disease.probability * 100)}%
+                              </span>
                             </div>
+                            <p className="text-sm text-muted-foreground">{disease.description}</p>
                           </div>
-                        </div>
-                        
-                        <div>
-                          <h3 className="text-sm font-medium text-muted-foreground mb-2">Symptoms</h3>
-                          <ul className="bg-gray-50 rounded-lg p-4 space-y-2">
-                            {analysisResults.symptoms.map((symptom: string, i: number) => (
-                              <li key={i} className="flex items-start text-sm gap-2">
-                                <span className="text-primary bg-primary-50 p-1 rounded-full">
-                                  <Check className="h-3 w-3" />
-                                </span>
-                                {symptom}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                        
-                        <div>
-                          <h3 className="text-sm font-medium text-muted-foreground mb-2">Medical History</h3>
-                          <ul className="bg-gray-50 rounded-lg p-4 space-y-2">
-                            {analysisResults.medicalHistory.map((item: string, i: number) => (
-                              <li key={i} className="flex items-start text-sm gap-2">
-                                <span className="text-primary bg-primary-50 p-1 rounded-full">
-                                  <Check className="h-3 w-3" />
-                                </span>
-                                {item}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
+                        ))}
                       </div>
-                      
-                      <div className="space-y-4">
-                        <div>
-                          <h3 className="text-sm font-medium text-muted-foreground mb-2">Genetic Markers</h3>
-                          <ul className="bg-gray-50 rounded-lg p-4 space-y-2">
-                            {analysisResults.geneticMarkers.map((marker: string, i: number) => (
-                              <li key={i} className="flex items-start text-sm gap-2">
-                                <span className="text-primary bg-primary-50 p-1 rounded-full">
-                                  <Check className="h-3 w-3" />
-                                </span>
-                                {marker}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                        
-                        <div>
-                          <h3 className="text-sm font-medium text-muted-foreground mb-2">Current Medications</h3>
-                          <ul className="bg-gray-50 rounded-lg p-4 space-y-2">
-                            {analysisResults.currentMedications.map((med: string, i: number) => (
-                              <li key={i} className="flex items-start text-sm gap-2">
-                                <span className="text-primary bg-primary-50 p-1 rounded-full">
-                                  <Check className="h-3 w-3" />
-                                </span>
-                                {med}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                        
-                        <div>
-                          <h3 className="text-sm font-medium text-muted-foreground mb-2">Allergies</h3>
-                          <ul className="bg-gray-50 rounded-lg p-4 space-y-2">
-                            {analysisResults.allergies.map((allergy: string, i: number) => (
-                              <li key={i} className="flex items-start text-sm gap-2">
-                                <span className="text-destructive bg-destructive/10 p-1 rounded-full">
-                                  <X className="h-3 w-3" />
-                                </span>
-                                {allergy}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
+                    </div>
+                    
+                    {/* Risk Factors */}
+                    <div>
+                      <h3 className="text-md font-medium text-primary mb-3">Risk Factors</h3>
+                      <ul className="bg-gray-50 rounded-lg p-4 space-y-2">
+                        {analysisResults.riskFactors?.map((factor: any, i: number) => (
+                          <li key={i} className="flex items-start text-sm gap-2">
+                            <span className="text-yellow-600 bg-yellow-50 p-1 rounded-full">
+                              <Check className="h-3 w-3" />
+                            </span>
+                            <div>
+                              <span className="font-medium">{factor.name}:</span> {factor.description}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    
+                    {/* Genetic Factors */}
+                    <div>
+                      <h3 className="text-md font-medium text-primary mb-3">Genetic Factors</h3>
+                      <ul className="bg-gray-50 rounded-lg p-4 space-y-2">
+                        {analysisResults.geneticFactors?.map((gene: any, i: number) => (
+                          <li key={i} className="flex items-start text-sm gap-2">
+                            <span className="text-primary bg-primary-50 p-1 rounded-full">
+                              <Dna className="h-3 w-3" />
+                            </span>
+                            <div>
+                              <span className="font-medium">{gene.name}:</span> {gene.impact}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    
+                    {/* Recommendations */}
+                    <div>
+                      <h3 className="text-md font-medium text-primary mb-3">Recommendations</h3>
+                      <ul className="bg-blue-50 rounded-lg p-4 space-y-2">
+                        {analysisResults.recommendations?.map((rec: any, i: number) => (
+                          <li key={i} className="flex items-start text-sm gap-2">
+                            <span className="text-blue-600 bg-blue-100 p-1 rounded-full">
+                              <Check className="h-3 w-3" />
+                            </span>
+                            {rec}
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                     
                     <div className="flex flex-wrap gap-2 justify-end">
@@ -408,7 +355,7 @@ const PatientAnalysis = () => {
                       </Button>
                       <Button>
                         <FileText className="mr-2 h-4 w-4" />
-                        Proceed to Recommendations
+                        Proceed to Treatment
                       </Button>
                     </div>
                   </div>
@@ -424,4 +371,4 @@ const PatientAnalysis = () => {
   );
 };
 
-export default PatientAnalysis;
+export default DiseasePrediction;

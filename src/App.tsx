@@ -8,7 +8,7 @@ import Index from "./pages/Index";
 import PatientAnalysis from "./pages/PatientAnalysis";
 import DrugRecommendation from "./pages/DrugRecommendation";
 import DrugDiscovery from "./pages/DrugDiscovery";
-import ClinicalTrials from "./pages/ClinicalTrials";
+import DiseasePrediction from "./pages/DiseasePrediction";
 import SideEffects from "./pages/SideEffects";
 import NotFound from "./pages/NotFound";
 
@@ -25,7 +25,7 @@ const App = () => (
           <Route path="/patient-analysis" element={<PatientAnalysis />} />
           <Route path="/drug-recommendation" element={<DrugRecommendation />} />
           <Route path="/drug-discovery" element={<DrugDiscovery />} />
-          <Route path="/clinical-trials" element={<ClinicalTrials />} />
+          <Route path="/disease-prediction" element={<DiseasePrediction />} />
           <Route path="/side-effects" element={<SideEffects />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
