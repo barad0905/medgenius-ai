@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -17,7 +16,6 @@ const ClinicalTrials = () => {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const { toast } = useToast();
 
-  // Sample clinical trials data
   const sampleTrials = [
     {
       id: "NCT04832932",
@@ -72,9 +70,7 @@ const ClinicalTrials = () => {
 
     setIsLoading(true);
 
-    // Simulate API call delay
     setTimeout(() => {
-      // Filter sample trials based on search criteria
       let results = [...sampleTrials];
       
       if (condition) {
@@ -174,7 +170,7 @@ const ClinicalTrials = () => {
                     <SelectValue placeholder="Select phase" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Any Phase</SelectItem>
+                    <SelectItem value="any">Any Phase</SelectItem>
                     <SelectItem value="Phase 1">Phase 1</SelectItem>
                     <SelectItem value="Phase 1/2">Phase 1/2</SelectItem>
                     <SelectItem value="Phase 2">Phase 2</SelectItem>
