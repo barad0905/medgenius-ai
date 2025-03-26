@@ -110,7 +110,7 @@ const DrugRecommendation = () => {
       const result = await analyzeWithGroq(patientInput);
       
       // Extract patient data and drug recommendations
-      setPatientData(result.patientData || {
+      const patientDataFromAPI = result.patientData || {
         id: `PT-${Math.floor(10000 + Math.random() * 90000)}`,
         name: "Patient",
         age: 56,
@@ -120,9 +120,23 @@ const DrugRecommendation = () => {
           { name: "CYP2D6", status: "Intermediate metabolizer" },
           { name: "SLCO1B1", status: "Reduced function" }
         ]
-      });
+      };
       
-      setDrugRecommendations(result.drugRecommendations || []);
+      // If the patientData is an array, extract the first element
+      const normalizedPatientData = Array.isArray(patientDataFromAPI) 
+        ? patientDataFromAPI[0] 
+        : patientDataFromAPI;
+        
+      // If geneticMarkers is not an array, create an empty array to prevent map errors
+      if (!normalizedPatientData.geneticMarkers || !Array.isArray(normalizedPatientData.geneticMarkers)) {
+        normalizedPatientData.geneticMarkers = [];
+      }
+      
+      setPatientData(normalizedPatientData);
+      
+      // Ensure drugRecommendations is an array
+      const drugRecsFromAPI = result.drugRecommendations || [];
+      setDrugRecommendations(Array.isArray(drugRecsFromAPI) ? drugRecsFromAPI : []);
       
       clearInterval(interval);
       setProgress(100);
@@ -313,15 +327,21 @@ const DrugRecommendation = () => {
                         Genetic Markers
                       </h4>
                       <ul className="space-y-2">
-                        {patientData.geneticMarkers.map((marker: any, i: number) => (
-                          <li key={i} className="bg-gray-50 p-3 rounded-lg text-sm flex items-center">
-                            <Dna className="h-4 w-4 mr-2 text-primary" />
-                            <div>
-                              <span className="font-medium">{marker.name}:</span>{" "}
-                              {marker.status}
-                            </div>
+                        {patientData.geneticMarkers && patientData.geneticMarkers.length > 0 ? (
+                          patientData.geneticMarkers.map((marker: any, i: number) => (
+                            <li key={i} className="bg-gray-50 p-3 rounded-lg text-sm flex items-center">
+                              <Dna className="h-4 w-4 mr-2 text-primary" />
+                              <div>
+                                <span className="font-medium">{marker.name}:</span>{" "}
+                                {marker.status}
+                              </div>
+                            </li>
+                          ))
+                        ) : (
+                          <li className="bg-gray-50 p-3 rounded-lg text-sm">
+                            No genetic markers available
                           </li>
-                        ))}
+                        )}
                       </ul>
                     </div>
                   </div>
@@ -355,61 +375,67 @@ const DrugRecommendation = () => {
                     </div>
                   ) : (
                     <div className="space-y-6 animate-fade-in">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                        {drugRecommendations.map((drug, i) => (
-                          <div
-                            key={i}
-                            className={cn(
-                              "border rounded-lg p-4 cursor-pointer transition-all duration-300",
-                              selectedDrug === drug 
-                                ? "border-primary bg-primary-50/50 shadow-sm" 
-                                : "hover:border-primary/30 hover:shadow-sm"
-                            )}
-                            onClick={() => setSelectedDrug(drug)}
-                          >
-                            <div className="flex justify-between items-start mb-3">
-                              <div className="flex items-center">
-                                <div className={cn(
-                                  "h-10 w-10 rounded-full flex items-center justify-center text-white mr-3",
-                                  drug.score >= 90 ? "bg-green-500" : 
-                                  drug.score >= 80 ? "bg-primary" : "bg-amber-500"
-                                )}>
-                                  <Pill className="h-5 w-5" />
-                                </div>
-                                <div>
-                                  <h3 className="font-medium">{drug.name}</h3>
-                                  <div className="flex items-center text-sm">
-                                    <div className="flex gap-1 mr-2">
-                                      {[...Array(Math.floor(drug.score / 20))].map((_, i) => (
-                                        <Star key={i} className="h-3 w-3 fill-amber-400 text-amber-400" />
-                                      ))}
-                                      {[...Array(5 - Math.floor(drug.score / 20))].map((_, i) => (
-                                        <Star key={i} className="h-3 w-3 text-gray-300" />
-                                      ))}
+                      {drugRecommendations.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                          {drugRecommendations.map((drug, i) => (
+                            <div
+                              key={i}
+                              className={cn(
+                                "border rounded-lg p-4 cursor-pointer transition-all duration-300",
+                                selectedDrug === drug 
+                                  ? "border-primary bg-primary-50/50 shadow-sm" 
+                                  : "hover:border-primary/30 hover:shadow-sm"
+                              )}
+                              onClick={() => setSelectedDrug(drug)}
+                            >
+                              <div className="flex justify-between items-start mb-3">
+                                <div className="flex items-center">
+                                  <div className={cn(
+                                    "h-10 w-10 rounded-full flex items-center justify-center text-white mr-3",
+                                    drug.score >= 90 ? "bg-green-500" : 
+                                    drug.score >= 80 ? "bg-primary" : "bg-amber-500"
+                                  )}>
+                                    <Pill className="h-5 w-5" />
+                                  </div>
+                                  <div>
+                                    <h3 className="font-medium">{drug.name}</h3>
+                                    <div className="flex items-center text-sm">
+                                      <div className="flex gap-1 mr-2">
+                                        {[...Array(Math.floor((drug.score || 70) / 20))].map((_, i) => (
+                                          <Star key={i} className="h-3 w-3 fill-amber-400 text-amber-400" />
+                                        ))}
+                                        {[...Array(5 - Math.floor((drug.score || 70) / 20))].map((_, i) => (
+                                          <Star key={i} className="h-3 w-3 text-gray-300" />
+                                        ))}
+                                      </div>
+                                      <span className="text-muted-foreground">{drug.score || drug.efficacyScore * 100 || 70}% match</span>
                                     </div>
-                                    <span className="text-muted-foreground">{drug.score}% match</span>
                                   </div>
                                 </div>
+                                <ChevronRight className="h-5 w-5 text-muted-foreground" />
                               </div>
-                              <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-2 text-sm">
-                              <div className="flex items-center">
-                                <BarChart className="h-3 w-3 text-primary mr-1" />
-                                <span className="text-muted-foreground">Effectiveness:</span>
-                              </div>
-                              <span className="font-medium">{drug.effectiveness}%</span>
                               
-                              <div className="flex items-center">
-                                <ShieldCheck className="h-3 w-3 text-primary mr-1" />
-                                <span className="text-muted-foreground">Side Effects:</span>
+                              <div className="grid grid-cols-2 gap-2 text-sm">
+                                <div className="flex items-center">
+                                  <BarChart className="h-3 w-3 text-primary mr-1" />
+                                  <span className="text-muted-foreground">Effectiveness:</span>
+                                </div>
+                                <span className="font-medium">{drug.effectiveness || Math.round(drug.efficacyScore * 100) || 80}%</span>
+                                
+                                <div className="flex items-center">
+                                  <ShieldCheck className="h-3 w-3 text-primary mr-1" />
+                                  <span className="text-muted-foreground">Side Effects:</span>
+                                </div>
+                                <span className="font-medium">{drug.sideEffects || drug.sideEffectProfile || "Moderate"}</span>
                               </div>
-                              <span className="font-medium">{drug.sideEffects}</span>
                             </div>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <p>No drug recommendations available. Try analyzing a different patient.</p>
+                        </div>
+                      )}
                       
                       {selectedDrug && (
                         <div className="animate-fade-in border-t pt-6">
@@ -422,8 +448,12 @@ const DrugRecommendation = () => {
                                 <h4 className="font-medium">Effectiveness</h4>
                               </div>
                               <div className="flex items-center">
-                                <span className="text-2xl font-bold">{selectedDrug.effectiveness}%</span>
-                                <span className="ml-2 text-sm text-muted-foreground">Confidence: {selectedDrug.confidence}</span>
+                                <span className="text-2xl font-bold">
+                                  {selectedDrug.effectiveness || Math.round(selectedDrug.efficacyScore * 100) || 80}%
+                                </span>
+                                <span className="ml-2 text-sm text-muted-foreground">
+                                  Confidence: {selectedDrug.confidence || "Moderate"}
+                                </span>
                               </div>
                             </div>
                             
@@ -433,8 +463,12 @@ const DrugRecommendation = () => {
                                 <h4 className="font-medium">Safety Profile</h4>
                               </div>
                               <div>
-                                <div className="text-sm"><span className="font-medium">Side Effects:</span> {selectedDrug.sideEffects}</div>
-                                <div className="text-sm"><span className="font-medium">Interactions:</span> {selectedDrug.interactions}</div>
+                                <div className="text-sm">
+                                  <span className="font-medium">Side Effects:</span> {selectedDrug.sideEffects || selectedDrug.sideEffectProfile || "Moderate"}
+                                </div>
+                                <div className="text-sm">
+                                  <span className="font-medium">Interactions:</span> {selectedDrug.interactions || "Minimal"}
+                                </div>
                               </div>
                             </div>
                             
@@ -444,12 +478,20 @@ const DrugRecommendation = () => {
                                 <h4 className="font-medium">Genetic Compatibility</h4>
                               </div>
                               <div className="flex items-center">
-                                <span className="font-medium">{selectedDrug.geneticMatch}</span>
+                                <span className="font-medium">
+                                  {selectedDrug.geneticMatch || selectedDrug.geneticCompatibility || "Good"}
+                                </span>
                                 <div className="ml-2 flex">
-                                  {[...Array(selectedDrug.geneticMatch === "Optimal" ? 3 : selectedDrug.geneticMatch === "Good" ? 2 : 1)].map((_, i) => (
+                                  {[...Array(
+                                    (selectedDrug.geneticMatch === "Optimal" || selectedDrug.geneticCompatibility === "Optimal") ? 3 : 
+                                    (selectedDrug.geneticMatch === "Good" || selectedDrug.geneticCompatibility === "Good") ? 2 : 1
+                                  )].map((_, i) => (
                                     <Dna key={i} className="h-3 w-3 text-primary" />
                                   ))}
-                                  {[...Array(3 - (selectedDrug.geneticMatch === "Optimal" ? 3 : selectedDrug.geneticMatch === "Good" ? 2 : 1))].map((_, i) => (
+                                  {[...Array(3 - (
+                                    (selectedDrug.geneticMatch === "Optimal" || selectedDrug.geneticCompatibility === "Optimal") ? 3 : 
+                                    (selectedDrug.geneticMatch === "Good" || selectedDrug.geneticCompatibility === "Good") ? 2 : 1
+                                  ))].map((_, i) => (
                                     <Dna key={i} className="h-3 w-3 text-muted" />
                                   ))}
                                 </div>
@@ -460,12 +502,21 @@ const DrugRecommendation = () => {
                           <div className="mb-6">
                             <h4 className="font-medium mb-3">AI Reasoning</h4>
                             <ul className="bg-gray-50 rounded-lg p-4 space-y-2">
-                              {selectedDrug.reasoning.map((reason: string, i: number) => (
-                                <li key={i} className="flex items-start text-sm gap-2">
+                              {(selectedDrug.reasoning && Array.isArray(selectedDrug.reasoning)) ? (
+                                selectedDrug.reasoning.map((reason: string, i: number) => (
+                                  <li key={i} className="flex items-start text-sm gap-2">
+                                    <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                                    {reason}
+                                  </li>
+                                ))
+                              ) : (
+                                <li className="flex items-start text-sm gap-2">
                                   <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                                  {reason}
+                                  {selectedDrug.geneticCompatibility ? 
+                                    `Compatible with ${selectedDrug.geneticCompatibility}` : 
+                                    "Recommended based on patient profile"}
                                 </li>
-                              ))}
+                              )}
                             </ul>
                           </div>
                           
@@ -495,7 +546,7 @@ const DrugRecommendation = () => {
   );
 };
 
-// Missing component
+// Check component
 const Check = ({ className }: { className?: string }) => {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
