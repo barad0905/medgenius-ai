@@ -231,6 +231,17 @@ const DrugRecommendation = () => {
     });
   };
 
+  // Helper function to safely stringify objects that might be directly rendered
+  const safelyRenderValue = (value: any): string => {
+    if (value === null || value === undefined) {
+      return '';
+    }
+    if (typeof value === 'object') {
+      return JSON.stringify(value);
+    }
+    return String(value);
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-white to-gray-50">
       <Navbar />
@@ -318,7 +329,7 @@ const DrugRecommendation = () => {
                         Primary Condition
                       </h4>
                       <div className="bg-gray-50 p-3 rounded-lg text-sm">
-                        {patientData.condition}
+                        {safelyRenderValue(patientData.condition)}
                       </div>
                     </div>
                     
@@ -333,7 +344,7 @@ const DrugRecommendation = () => {
                               <Dna className="h-4 w-4 mr-2 text-primary" />
                               <div>
                                 <span className="font-medium">{marker.name}:</span>{" "}
-                                {marker.status}
+                                {safelyRenderValue(marker.status)}
                               </div>
                             </li>
                           ))
@@ -398,7 +409,7 @@ const DrugRecommendation = () => {
                                     <Pill className="h-5 w-5" />
                                   </div>
                                   <div>
-                                    <h3 className="font-medium">{drug.name}</h3>
+                                    <h3 className="font-medium">{safelyRenderValue(drug.name)}</h3>
                                     <div className="flex items-center text-sm">
                                       <div className="flex gap-1 mr-2">
                                         {[...Array(Math.floor((drug.score || 70) / 20))].map((_, i) => (
@@ -420,13 +431,13 @@ const DrugRecommendation = () => {
                                   <BarChart className="h-3 w-3 text-primary mr-1" />
                                   <span className="text-muted-foreground">Effectiveness:</span>
                                 </div>
-                                <span className="font-medium">{drug.effectiveness || Math.round(drug.efficacyScore * 100) || 80}%</span>
+                                <span className="font-medium">{safelyRenderValue(drug.effectiveness || Math.round(drug.efficacyScore * 100) || 80)}%</span>
                                 
                                 <div className="flex items-center">
                                   <ShieldCheck className="h-3 w-3 text-primary mr-1" />
                                   <span className="text-muted-foreground">Side Effects:</span>
                                 </div>
-                                <span className="font-medium">{drug.sideEffects || drug.sideEffectProfile || "Moderate"}</span>
+                                <span className="font-medium">{safelyRenderValue(drug.sideEffects || drug.sideEffectProfile || "Moderate")}</span>
                               </div>
                             </div>
                           ))}
@@ -439,7 +450,7 @@ const DrugRecommendation = () => {
                       
                       {selectedDrug && (
                         <div className="animate-fade-in border-t pt-6">
-                          <h3 className="text-lg font-semibold mb-4">{selectedDrug.name} • Detailed Analysis</h3>
+                          <h3 className="text-lg font-semibold mb-4">{safelyRenderValue(selectedDrug.name)} • Detailed Analysis</h3>
                           
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                             <div className="bg-gray-50 p-4 rounded-lg">
@@ -449,10 +460,10 @@ const DrugRecommendation = () => {
                               </div>
                               <div className="flex items-center">
                                 <span className="text-2xl font-bold">
-                                  {selectedDrug.effectiveness || Math.round(selectedDrug.efficacyScore * 100) || 80}%
+                                  {safelyRenderValue(selectedDrug.effectiveness || Math.round(selectedDrug.efficacyScore * 100) || 80)}%
                                 </span>
                                 <span className="ml-2 text-sm text-muted-foreground">
-                                  Confidence: {selectedDrug.confidence || "Moderate"}
+                                  Confidence: {safelyRenderValue(selectedDrug.confidence || "Moderate")}
                                 </span>
                               </div>
                             </div>
@@ -464,10 +475,10 @@ const DrugRecommendation = () => {
                               </div>
                               <div>
                                 <div className="text-sm">
-                                  <span className="font-medium">Side Effects:</span> {selectedDrug.sideEffects || selectedDrug.sideEffectProfile || "Moderate"}
+                                  <span className="font-medium">Side Effects:</span> {safelyRenderValue(selectedDrug.sideEffects || selectedDrug.sideEffectProfile || "Moderate")}
                                 </div>
                                 <div className="text-sm">
-                                  <span className="font-medium">Interactions:</span> {selectedDrug.interactions || "Minimal"}
+                                  <span className="font-medium">Interactions:</span> {safelyRenderValue(selectedDrug.interactions || "Minimal")}
                                 </div>
                               </div>
                             </div>
@@ -479,7 +490,7 @@ const DrugRecommendation = () => {
                               </div>
                               <div className="flex items-center">
                                 <span className="font-medium">
-                                  {selectedDrug.geneticMatch || selectedDrug.geneticCompatibility || "Good"}
+                                  {safelyRenderValue(selectedDrug.geneticMatch || selectedDrug.geneticCompatibility || "Good")}
                                 </span>
                                 <div className="ml-2 flex">
                                   {[...Array(
@@ -506,14 +517,14 @@ const DrugRecommendation = () => {
                                 selectedDrug.reasoning.map((reason: string, i: number) => (
                                   <li key={i} className="flex items-start text-sm gap-2">
                                     <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                                    {reason}
+                                    {safelyRenderValue(reason)}
                                   </li>
                                 ))
                               ) : (
                                 <li className="flex items-start text-sm gap-2">
                                   <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                                   {selectedDrug.geneticCompatibility ? 
-                                    `Compatible with ${selectedDrug.geneticCompatibility}` : 
+                                    `Compatible with ${safelyRenderValue(selectedDrug.geneticCompatibility)}` : 
                                     "Recommended based on patient profile"}
                                 </li>
                               )}
