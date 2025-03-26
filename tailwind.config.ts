@@ -120,11 +120,13 @@ export default {
 				'glass': '0 8px 32px rgba(0, 0, 0, 0.05)',
 				'card': '0 10px 30px -5px rgba(0, 0, 0, 0.05)',
 				'brutal': '5px 5px 0px 0px rgba(0,0,0,1)',
+				'glow': '0 0 15px rgba(14, 165, 233, 0.3)',
 			},
 			backgroundImage: {
 				'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
 				'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
 				'gradient-glass': 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%)',
+				'hero-pattern': 'radial-gradient(circle at 50% 50%, rgba(14, 165, 233, 0.08) 0%, rgba(14, 165, 233, 0.02) 50%, transparent 100%)',
 			},
 		}
 	},
