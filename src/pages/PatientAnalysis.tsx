@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -10,7 +9,6 @@ import { FileUp, FileText, Check, X, Download, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 
-// Groq API key
 const GROQ_API_KEY = "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";
 
 const PatientAnalysis = () => {
@@ -25,7 +23,6 @@ const PatientAnalysis = () => {
     window.scrollTo(0, 0);
   }, []);
 
-  // Simulating file upload handling
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
@@ -69,29 +66,22 @@ const PatientAnalysis = () => {
       const data = await response.json();
       console.log("Groq API response:", data);
       
-      // Get the content from the response
       const content = data.choices[0].message.content;
       
-      // Instead of trying to parse directly, extract the JSON part from the response
       try {
-        // More robust regex to extract JSON
         const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || 
                          content.match(/```\s*([\s\S]*?)\s*```/) ||
                          content.match(/{[\s\S]*}/);
         
-        // If a match is found, use it, otherwise try to parse the whole content
         const jsonStr = jsonMatch ? jsonMatch[1] || jsonMatch[0] : content;
         
-        // Process the JSON string to remove any markdown or extra text
         const cleanedJson = jsonStr.replace(/```[a-z]*\n?/g, '').trim();
         
-        // Try to parse the cleaned JSON
         try {
           return JSON.parse(cleanedJson);
         } catch (innerError) {
           console.error("Failed to parse cleaned JSON:", innerError);
           
-          // One last attempt - try to find anything that looks like a JSON object
           const lastAttempt = cleanedJson.match(/{[\s\S]*}/);
           if (lastAttempt) {
             return JSON.parse(lastAttempt[0]);
@@ -102,7 +92,6 @@ const PatientAnalysis = () => {
       } catch (jsonError) {
         console.error("Error parsing JSON from Groq response:", jsonError, content);
         
-        // Create a structured object from the unstructured text response
         const sections = content.split(/\*\*([^*]+)\*\*/g).filter(Boolean);
         const result: any = {
           demographics: {},
@@ -121,7 +110,6 @@ const PatientAnalysis = () => {
           if (section === "Demographics") {
             currentSection = "demographics";
             
-            // Extract the demographic data
             const demographicText = sections[i + 1] || "";
             const lines = demographicText.split('\n').filter(Boolean);
             
@@ -137,7 +125,6 @@ const PatientAnalysis = () => {
           } else if (section === "Symptoms") {
             currentSection = "symptoms";
             
-            // Extract symptoms
             const symptomsText = sections[i + 1] || "";
             const lines = symptomsText.split('\n').filter(Boolean);
             
@@ -151,7 +138,6 @@ const PatientAnalysis = () => {
           } else if (section === "Medical History") {
             currentSection = "medicalHistory";
             
-            // Extract medical history
             const historyText = sections[i + 1] || "";
             const lines = historyText.split('\n').filter(Boolean);
             
@@ -165,7 +151,6 @@ const PatientAnalysis = () => {
           } else if (section === "Genetic Markers") {
             currentSection = "geneticMarkers";
             
-            // Extract genetic markers
             const markersText = sections[i + 1] || "";
             const lines = markersText.split('\n').filter(Boolean);
             
@@ -179,7 +164,6 @@ const PatientAnalysis = () => {
           } else if (section === "Current Medications") {
             currentSection = "currentMedications";
             
-            // Extract medications
             const medsText = sections[i + 1] || "";
             const lines = medsText.split('\n').filter(Boolean);
             
@@ -193,7 +177,6 @@ const PatientAnalysis = () => {
           } else if (section === "Allergies") {
             currentSection = "allergies";
             
-            // Extract allergies
             const allergiesText = sections[i + 1] || "";
             const lines = allergiesText.split('\n').filter(Boolean);
             
@@ -214,7 +197,6 @@ const PatientAnalysis = () => {
     }
   };
 
-  // Analysis process with progress updates
   const simulateAnalysis = async () => {
     if (!file && !patientText) {
       toast({
@@ -229,7 +211,6 @@ const PatientAnalysis = () => {
     setProgress(0);
     setAnalysisResults(null);
 
-    // Setup progress simulation
     const interval = setInterval(() => {
       setProgress(prev => {
         const newProgress = prev + 10;
@@ -242,7 +223,6 @@ const PatientAnalysis = () => {
     }, 300);
 
     try {
-      // Use entered text or placeholder for demo
       const textToAnalyze = patientText || 
         "56-year-old male with persistent cough, fever of 101.2°F, shortness of breath, and fatigue. Medical history includes hypertension diagnosed in 2015 and Type 2 Diabetes diagnosed in 2018. Genetic test shows CYP2D6 - Intermediate metabolizer and SLCO1B1 - Reduced function. Currently taking Lisinopril 10mg daily and Metformin 500mg twice daily. Known allergies to Penicillin and Shellfish.";
       
@@ -264,7 +244,6 @@ const PatientAnalysis = () => {
         description: "We'll use a sample analysis for demonstration purposes.",
       });
       
-      // Fallback to sample data if API fails
       setAnalysisResults({
         demographics: {
           age: 56,
@@ -322,7 +301,6 @@ const PatientAnalysis = () => {
     });
   };
 
-  // Helper to safely render object values
   const renderValue = (value: any): string => {
     if (value === undefined || value === null) {
       return "Not specified";
