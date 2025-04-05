@@ -39,3 +39,35 @@ export const safelyRenderValue = (value: any): string => {
   }
   return String(value);
 };
+
+// Recursively transforms any object values into renderable strings
+export const transformToRenderableValues = (data: any): any => {
+  if (data === null || data === undefined) {
+    return '';
+  }
+  
+  // Handle arrays
+  if (Array.isArray(data)) {
+    return data.map(item => transformToRenderableValues(item));
+  }
+  
+  // Handle objects
+  if (typeof data === 'object') {
+    const result: any = {};
+    for (const [key, value] of Object.entries(data)) {
+      result[key] = transformToRenderableValues(value);
+    }
+    return result;
+  }
+  
+  // Return primitives as is
+  return data;
+};
+
+// Function to check if an object might be a stringified JSON
+export const mightBeJson = (str: string): boolean => {
+  if (typeof str !== 'string') return false;
+  str = str.trim();
+  return (str.startsWith('{') && str.endsWith('}')) || 
+         (str.startsWith('[') && str.endsWith(']'));
+};

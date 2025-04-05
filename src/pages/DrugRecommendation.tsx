@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -13,7 +12,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
-import { deepParseJsonStrings } from "@/utils/jsonHelpers";
+import { deepParseJsonStrings, safelyRenderValue } from "@/utils/jsonHelpers";
 
 // Groq API key
 const GROQ_API_KEY = "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";
@@ -64,7 +63,6 @@ const DrugRecommendation = () => {
       
       const content = data.choices[0].message.content;
       try {
-        // Try to extract JSON from the response which might be markdown formatted
         const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/) || 
                          content.match(/```\n([\s\S]*?)\n```/) ||
                          content.match(/{[\s\S]*}/);
@@ -138,9 +136,19 @@ const DrugRecommendation = () => {
       
       setPatientData(normalizedPatientData);
       
-      // Ensure drugRecommendations is an array
+      // Ensure drugRecommendations is an array and each drug has a name property
       const drugRecsFromAPI = result.drugRecommendations || [];
-      setDrugRecommendations(Array.isArray(drugRecsFromAPI) ? drugRecsFromAPI : []);
+      const processedRecs = Array.isArray(drugRecsFromAPI) 
+        ? drugRecsFromAPI.map(drug => {
+            return {
+              ...drug,
+              // Ensure each drug has a name property (might be in different formats)
+              name: drug.name || drug.drugName || drug.drug || "Unknown Drug"
+            };
+          })
+        : [];
+      
+      setDrugRecommendations(processedRecs);
       
       clearInterval(interval);
       setProgress(100);
@@ -448,8 +456,8 @@ const DrugRecommendation = () => {
                                 <div className="flex items-center">
                                   <div className={cn(
                                     "h-10 w-10 rounded-full flex items-center justify-center text-white mr-3",
-                                    drug.score >= 90 ? "bg-green-500" : 
-                                    drug.score >= 80 ? "bg-primary" : "bg-amber-500"
+                                    drug.score >= 90 || drug.efficacy >= 90 || drug.effectiveness >= 90 || (drug.efficacyScore && drug.efficacyScore >= 0.9) ? "bg-green-500" : 
+                                    drug.score >= 80 || drug.efficacy >= 80 || drug.effectiveness >= 80 || (drug.efficacyScore && drug.efficacyScore >= 0.8) ? "bg-primary" : "bg-amber-500"
                                   )}>
                                     <Pill className="h-5 w-5" />
                                   </div>
@@ -457,14 +465,21 @@ const DrugRecommendation = () => {
                                     <h3 className="font-medium">{renderValue(drug.name)}</h3>
                                     <div className="flex items-center text-sm">
                                       <div className="flex gap-1 mr-2">
-                                        {[...Array(Math.floor((drug.score || 70) / 20))].map((_, i) => (
+                                        {[...Array(Math.floor(
+                                          (drug.score || drug.efficacy || drug.effectiveness || (drug.efficacyScore ? drug.efficacyScore * 100 : 0) || 70) / 20
+                                        ))].map((_, i) => (
                                           <Star key={i} className="h-3 w-3 fill-amber-400 text-amber-400" />
                                         ))}
-                                        {[...Array(5 - Math.floor((drug.score || 70) / 20))].map((_, i) => (
+                                        {[...Array(5 - Math.floor(
+                                          (drug.score || drug.efficacy || drug.effectiveness || (drug.efficacyScore ? drug.efficacyScore * 100 : 0) || 70) / 20
+                                        ))].map((_, i) => (
                                           <Star key={i} className="h-3 w-3 text-gray-300" />
                                         ))}
                                       </div>
-                                      <span className="text-muted-foreground">{drug.score || drug.efficacyScore * 100 || 70}% match</span>
+                                      <span className="text-muted-foreground">
+                                        {drug.score || drug.efficacy || drug.effectiveness || 
+                                         (drug.efficacyScore ? Math.round(drug.efficacyScore * 100) : 70)}% match
+                                      </span>
                                     </div>
                                   </div>
                                 </div>
@@ -476,13 +491,25 @@ const DrugRecommendation = () => {
                                   <BarChart className="h-3 w-3 text-primary mr-1" />
                                   <span className="text-muted-foreground">Effectiveness:</span>
                                 </div>
-                                <span className="font-medium">{renderValue(drug.effectiveness || Math.round(drug.efficacyScore * 100) || 80)}%</span>
+                                <span className="font-medium">
+                                  {renderValue(
+                                    drug.effectiveness || 
+                                    drug.efficacy || 
+                                    (drug.efficacyScore ? Math.round(drug.efficacyScore * 100) : 80)
+                                  )}%
+                                </span>
                                 
                                 <div className="flex items-center">
                                   <ShieldCheck className="h-3 w-3 text-primary mr-1" />
                                   <span className="text-muted-foreground">Side Effects:</span>
                                 </div>
-                                <span className="font-medium">{renderValue(drug.sideEffects || drug.sideEffectProfile || "Moderate")}</span>
+                                <span className="font-medium">
+                                  {renderValue(drug.sideEffects || 
+                                    (drug.sideEffectProfile && typeof drug.sideEffectProfile === 'string' 
+                                      ? drug.sideEffectProfile 
+                                      : "Moderate")
+                                  )}
+                                </span>
                               </div>
                             </div>
                           ))}
