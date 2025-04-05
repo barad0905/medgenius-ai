@@ -13,6 +13,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { deepParseJsonStrings } from "@/utils/jsonHelpers";
 
 // Groq API key
 const GROQ_API_KEY = "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";
@@ -69,7 +70,10 @@ const DrugRecommendation = () => {
                          content.match(/{[\s\S]*}/);
         
         const jsonStr = jsonMatch ? jsonMatch[1] || jsonMatch[0] : content;
-        return JSON.parse(jsonStr.trim());
+        const parsedResult = JSON.parse(jsonStr.trim());
+        
+        // Process any nested JSON strings
+        return deepParseJsonStrings(parsedResult);
       } catch (jsonError) {
         console.error("Error parsing JSON from Groq response:", jsonError);
         throw new Error("Could not parse response from AI service");
@@ -206,6 +210,47 @@ const DrugRecommendation = () => {
     }
   };
 
+  // Helper function to render complex values correctly
+  const renderValue = (value: any): React.ReactNode => {
+    if (value === null || value === undefined) {
+      return '';
+    }
+    
+    if (typeof value === 'string') {
+      return value;
+    }
+    
+    if (Array.isArray(value)) {
+      return (
+        <ul className="list-disc pl-5 space-y-1">
+          {value.map((item, i) => (
+            <li key={i}>{typeof item === 'object' ? renderObjectValue(item) : item}</li>
+          ))}
+        </ul>
+      );
+    }
+    
+    if (typeof value === 'object') {
+      return renderObjectValue(value);
+    }
+    
+    return String(value);
+  };
+  
+  // Helper function to render object values
+  const renderObjectValue = (obj: any): React.ReactNode => {
+    return (
+      <div className="space-y-2">
+        {Object.entries(obj).map(([key, value], i) => (
+          <div key={i} className="text-sm">
+            <span className="font-medium">{key}:</span>{" "}
+            {renderValue(value)}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   const handleDownloadResults = () => {
     if (!patientData || !drugRecommendations.length) return;
     
@@ -316,9 +361,9 @@ const DrugRecommendation = () => {
                       <User className="h-6 w-6 text-primary" />
                     </div>
                     <div>
-                      <h3 className="font-medium">{patientData.name}</h3>
+                      <h3 className="font-medium">{renderValue(patientData.name)}</h3>
                       <p className="text-sm text-muted-foreground">
-                        {patientData.age} years, {patientData.gender} • ID: {patientData.id}
+                        {renderValue(patientData.age)} years, {renderValue(patientData.gender)} • ID: {renderValue(patientData.id)}
                       </p>
                     </div>
                   </div>
@@ -329,7 +374,7 @@ const DrugRecommendation = () => {
                         Primary Condition
                       </h4>
                       <div className="bg-gray-50 p-3 rounded-lg text-sm">
-                        {safelyRenderValue(patientData.condition)}
+                        {renderValue(patientData.condition)}
                       </div>
                     </div>
                     
@@ -343,8 +388,8 @@ const DrugRecommendation = () => {
                             <li key={i} className="bg-gray-50 p-3 rounded-lg text-sm flex items-center">
                               <Dna className="h-4 w-4 mr-2 text-primary" />
                               <div>
-                                <span className="font-medium">{marker.name}:</span>{" "}
-                                {safelyRenderValue(marker.status)}
+                                <span className="font-medium">{renderValue(marker.name)}:</span>{" "}
+                                {renderValue(marker.status)}
                               </div>
                             </li>
                           ))
@@ -409,7 +454,7 @@ const DrugRecommendation = () => {
                                     <Pill className="h-5 w-5" />
                                   </div>
                                   <div>
-                                    <h3 className="font-medium">{safelyRenderValue(drug.name)}</h3>
+                                    <h3 className="font-medium">{renderValue(drug.name)}</h3>
                                     <div className="flex items-center text-sm">
                                       <div className="flex gap-1 mr-2">
                                         {[...Array(Math.floor((drug.score || 70) / 20))].map((_, i) => (
@@ -431,13 +476,13 @@ const DrugRecommendation = () => {
                                   <BarChart className="h-3 w-3 text-primary mr-1" />
                                   <span className="text-muted-foreground">Effectiveness:</span>
                                 </div>
-                                <span className="font-medium">{safelyRenderValue(drug.effectiveness || Math.round(drug.efficacyScore * 100) || 80)}%</span>
+                                <span className="font-medium">{renderValue(drug.effectiveness || Math.round(drug.efficacyScore * 100) || 80)}%</span>
                                 
                                 <div className="flex items-center">
                                   <ShieldCheck className="h-3 w-3 text-primary mr-1" />
                                   <span className="text-muted-foreground">Side Effects:</span>
                                 </div>
-                                <span className="font-medium">{safelyRenderValue(drug.sideEffects || drug.sideEffectProfile || "Moderate")}</span>
+                                <span className="font-medium">{renderValue(drug.sideEffects || drug.sideEffectProfile || "Moderate")}</span>
                               </div>
                             </div>
                           ))}
@@ -450,7 +495,7 @@ const DrugRecommendation = () => {
                       
                       {selectedDrug && (
                         <div className="animate-fade-in border-t pt-6">
-                          <h3 className="text-lg font-semibold mb-4">{safelyRenderValue(selectedDrug.name)} • Detailed Analysis</h3>
+                          <h3 className="text-lg font-semibold mb-4">{renderValue(selectedDrug.name)} • Detailed Analysis</h3>
                           
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                             <div className="bg-gray-50 p-4 rounded-lg">
@@ -460,10 +505,10 @@ const DrugRecommendation = () => {
                               </div>
                               <div className="flex items-center">
                                 <span className="text-2xl font-bold">
-                                  {safelyRenderValue(selectedDrug.effectiveness || Math.round(selectedDrug.efficacyScore * 100) || 80)}%
+                                  {renderValue(selectedDrug.effectiveness || Math.round(selectedDrug.efficacyScore * 100) || 80)}%
                                 </span>
                                 <span className="ml-2 text-sm text-muted-foreground">
-                                  Confidence: {safelyRenderValue(selectedDrug.confidence || "Moderate")}
+                                  Confidence: {renderValue(selectedDrug.confidence || "Moderate")}
                                 </span>
                               </div>
                             </div>
@@ -475,10 +520,10 @@ const DrugRecommendation = () => {
                               </div>
                               <div>
                                 <div className="text-sm">
-                                  <span className="font-medium">Side Effects:</span> {safelyRenderValue(selectedDrug.sideEffects || selectedDrug.sideEffectProfile || "Moderate")}
+                                  <span className="font-medium">Side Effects:</span> {renderValue(selectedDrug.sideEffects || selectedDrug.sideEffectProfile || "Moderate")}
                                 </div>
                                 <div className="text-sm">
-                                  <span className="font-medium">Interactions:</span> {safelyRenderValue(selectedDrug.interactions || "Minimal")}
+                                  <span className="font-medium">Interactions:</span> {renderValue(selectedDrug.interactions || "Minimal")}
                                 </div>
                               </div>
                             </div>
@@ -490,7 +535,7 @@ const DrugRecommendation = () => {
                               </div>
                               <div className="flex items-center">
                                 <span className="font-medium">
-                                  {safelyRenderValue(selectedDrug.geneticMatch || selectedDrug.geneticCompatibility || "Good")}
+                                  {renderValue(selectedDrug.geneticMatch || selectedDrug.geneticCompatibility || "Good")}
                                 </span>
                                 <div className="ml-2 flex">
                                   {[...Array(
@@ -517,14 +562,14 @@ const DrugRecommendation = () => {
                                 selectedDrug.reasoning.map((reason: string, i: number) => (
                                   <li key={i} className="flex items-start text-sm gap-2">
                                     <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                                    {safelyRenderValue(reason)}
+                                    {renderValue(reason)}
                                   </li>
                                 ))
                               ) : (
                                 <li className="flex items-start text-sm gap-2">
                                   <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                                   {selectedDrug.geneticCompatibility ? 
-                                    `Compatible with ${safelyRenderValue(selectedDrug.geneticCompatibility)}` : 
+                                    `Compatible with ${renderValue(selectedDrug.geneticCompatibility)}` : 
                                     "Recommended based on patient profile"}
                                 </li>
                               )}

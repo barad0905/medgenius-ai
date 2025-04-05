@@ -118,7 +118,10 @@ const DiseasePrediction = () => {
       
       const result = await analyzeWithGroq(textToAnalyze);
       
-      setAnalysisResults(result);
+      // Process any string fields that might be JSON
+      const processedResult = deepParseJsonStrings(result);
+      
+      setAnalysisResults(processedResult);
       clearInterval(interval);
       setProgress(100);
       
@@ -138,6 +141,77 @@ const DiseasePrediction = () => {
     } finally {
       setIsAnalyzing(false);
     }
+  };
+
+  // Function to recursively parse any JSON strings in the object
+  const deepParseJsonStrings = (obj: any): any => {
+    if (obj === null || obj === undefined) return obj;
+    
+    if (typeof obj === 'string') {
+      try {
+        // Try to parse it as JSON
+        return JSON.parse(obj);
+      } catch (e) {
+        // If it's not valid JSON, return the original string
+        return obj;
+      }
+    }
+    
+    if (Array.isArray(obj)) {
+      return obj.map(item => deepParseJsonStrings(item));
+    }
+    
+    if (typeof obj === 'object') {
+      const result: any = {};
+      for (const [key, value] of Object.entries(obj)) {
+        result[key] = deepParseJsonStrings(value);
+      }
+      return result;
+    }
+    
+    // For numbers, booleans, etc., return as is
+    return obj;
+  };
+
+  // Helper function to render complex values correctly
+  const renderValue = (value: any): React.ReactNode => {
+    if (value === null || value === undefined) {
+      return '';
+    }
+    
+    if (typeof value === 'string') {
+      return value;
+    }
+    
+    if (Array.isArray(value)) {
+      return (
+        <ul className="list-disc pl-5 space-y-1">
+          {value.map((item, i) => (
+            <li key={i}>{typeof item === 'object' ? renderObjectValue(item) : item}</li>
+          ))}
+        </ul>
+      );
+    }
+    
+    if (typeof value === 'object') {
+      return renderObjectValue(value);
+    }
+    
+    return String(value);
+  };
+  
+  // Helper function to render object values
+  const renderObjectValue = (obj: any): React.ReactNode => {
+    return (
+      <div className="space-y-2">
+        {Object.entries(obj).map(([key, value], i) => (
+          <div key={i} className="text-sm">
+            <span className="font-medium">{key}:</span>{" "}
+            {renderValue(value)}
+          </div>
+        ))}
+      </div>
+    );
   };
 
   const handleDownloadResults = () => {
@@ -282,7 +356,7 @@ const DiseasePrediction = () => {
                         {analysisResults.predictedDiseases?.map((disease: any, i: number) => (
                           <div key={i} className="bg-white border rounded-lg p-4 hover:shadow-md transition-shadow">
                             <div className="flex justify-between items-start mb-2">
-                              <h4 className="font-semibold">{disease.name}</h4>
+                              <h4 className="font-semibold">{renderValue(disease.name)}</h4>
                               <span className={`text-sm font-medium px-2 py-1 rounded-full ${
                                 disease.probability > 0.7 
                                   ? "bg-red-50 text-red-600" 
@@ -290,10 +364,10 @@ const DiseasePrediction = () => {
                                     ? "bg-yellow-50 text-yellow-600" 
                                     : "bg-green-50 text-green-600"
                               }`}>
-                                {Math.round(disease.probability * 100)}%
+                                {Math.round((typeof disease.probability === 'number' ? disease.probability : 0.5) * 100)}%
                               </span>
                             </div>
-                            <p className="text-sm text-muted-foreground">{disease.description}</p>
+                            <p className="text-sm text-muted-foreground">{renderValue(disease.description)}</p>
                           </div>
                         ))}
                       </div>
@@ -309,7 +383,7 @@ const DiseasePrediction = () => {
                               <Check className="h-3 w-3" />
                             </span>
                             <div>
-                              <span className="font-medium">{factor.name}:</span> {factor.description}
+                              <span className="font-medium">{renderValue(factor.name)}:</span> {renderValue(factor.description)}
                             </div>
                           </li>
                         ))}
@@ -326,7 +400,7 @@ const DiseasePrediction = () => {
                               <Dna className="h-3 w-3" />
                             </span>
                             <div>
-                              <span className="font-medium">{gene.name}:</span> {gene.impact}
+                              <span className="font-medium">{renderValue(gene.name)}:</span> {renderValue(gene.impact)}
                             </div>
                           </li>
                         ))}
@@ -342,7 +416,7 @@ const DiseasePrediction = () => {
                             <span className="text-blue-600 bg-blue-100 p-1 rounded-full">
                               <Check className="h-3 w-3" />
                             </span>
-                            {rec}
+                            {renderValue(rec)}
                           </li>
                         ))}
                       </ul>
