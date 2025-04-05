@@ -8,6 +8,7 @@ import GlassCard from "@/components/ui/GlassCard";
 import { FileUp, FileText, Check, X, Download, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
+import { deepParseJsonStrings, safelyRenderValue, transformToRenderableValues, mightBeJson } from "@/utils/jsonHelpers";
 
 const GROQ_API_KEY = "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";
 
@@ -371,14 +372,66 @@ const PatientAnalysis = () => {
     });
   };
 
-  const renderValue = (value: any): string => {
-    if (value === undefined || value === null) {
-      return "Not specified";
+  const renderValue = (value: any): React.ReactNode => {
+    if (value === null || value === undefined) {
+      return '';
     }
-    if (typeof value === "object") {
-      return JSON.stringify(value);
+    
+    if (typeof value === 'string' && mightBeJson(value)) {
+      try {
+        const parsedValue = JSON.parse(value);
+        return renderObject(parsedValue);
+      } catch (e) {
+        return value;
+      }
     }
+    
+    if (typeof value === 'string') {
+      return value;
+    }
+    
+    if (Array.isArray(value)) {
+      return (
+        <ul className="list-disc pl-5 space-y-1">
+          {value.map((item, i) => (
+            <li key={i}>{typeof item === 'object' ? renderObject(item) : renderValue(item)}</li>
+          ))}
+        </ul>
+      );
+    }
+    
+    if (typeof value === 'object') {
+      return renderObject(value);
+    }
+    
     return String(value);
+  };
+  
+  const renderObject = (obj: any): React.ReactNode => {
+    if (!obj) return '';
+    
+    if (obj.name && (obj.dose || obj.condition)) {
+      // Handle medication object format
+      return (
+        <div className="flex flex-col">
+          <span className="font-medium">{obj.name}</span>
+          <span className="text-xs text-muted-foreground">
+            {obj.dose && `${obj.dose}`}{obj.dose && obj.condition && ' - '}{obj.condition}
+          </span>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="space-y-1">
+        {Object.entries(obj).map(([key, value], i) => (
+          <div key={i} className="text-sm">
+            <span className="font-medium">{key}:</span>{" "}
+            {renderValue(value)}
+          </div>
+        ))}
+      </div>
+    );
   };
 
   return (
@@ -520,7 +573,7 @@ const PatientAnalysis = () => {
                                 <span className="text-primary bg-primary-50 p-1 rounded-full">
                                   <Check className="h-3 w-3" />
                                 </span>
-                                {symptom}
+                                {renderValue(symptom)}
                               </li>
                             ))}
                           </ul>
@@ -534,7 +587,7 @@ const PatientAnalysis = () => {
                                 <span className="text-primary bg-primary-50 p-1 rounded-full">
                                   <Check className="h-3 w-3" />
                                 </span>
-                                {typeof item === 'string' ? item : JSON.stringify(item)}
+                                {renderValue(item)}
                               </li>
                             ))}
                           </ul>
@@ -550,7 +603,7 @@ const PatientAnalysis = () => {
                                 <span className="text-primary bg-primary-50 p-1 rounded-full">
                                   <Check className="h-3 w-3" />
                                 </span>
-                                {typeof marker === 'string' ? marker : JSON.stringify(marker)}
+                                {renderValue(marker)}
                               </li>
                             ))}
                           </ul>
@@ -564,7 +617,7 @@ const PatientAnalysis = () => {
                                 <span className="text-primary bg-primary-50 p-1 rounded-full">
                                   <Check className="h-3 w-3" />
                                 </span>
-                                {typeof med === 'string' ? med : JSON.stringify(med)}
+                                {renderValue(med)}
                               </li>
                             ))}
                           </ul>
@@ -579,7 +632,7 @@ const PatientAnalysis = () => {
                                   <span className="text-destructive bg-destructive/10 p-1 rounded-full">
                                     <X className="h-3 w-3" />
                                   </span>
-                                  {typeof allergy === 'string' ? allergy : JSON.stringify(allergy)}
+                                  {renderValue(allergy)}
                                 </li>
                               ))
                             ) : (

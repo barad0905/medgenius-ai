@@ -71,3 +71,34 @@ export const mightBeJson = (str: string): boolean => {
   return (str.startsWith('{') && str.endsWith('}')) || 
          (str.startsWith('[') && str.endsWith(']'));
 };
+
+// Format medication objects for display
+export const formatMedication = (med: any): string => {
+  if (!med) return '';
+  
+  if (typeof med === 'string') {
+    try {
+      const parsedMed = JSON.parse(med);
+      if (parsedMed.name) {
+        let formatted = parsedMed.name;
+        if (parsedMed.dose) formatted += ` (${parsedMed.dose})`;
+        if (parsedMed.condition) formatted += ` - ${parsedMed.condition}`;
+        return formatted;
+      }
+      return med;
+    } catch (e) {
+      return med;
+    }
+  }
+  
+  if (typeof med === 'object') {
+    if (med.name) {
+      let formatted = med.name;
+      if (med.dose) formatted += ` (${med.dose})`;
+      if (med.condition) formatted += ` - ${med.condition}`;
+      return formatted;
+    }
+  }
+  
+  return String(med);
+};
