@@ -11,7 +11,6 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Settings from "./pages/Settings";
 import Security from "./pages/Security";
-import ApiSettings from "./pages/ApiSettings";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { useEffect, useState } from "react";
 
@@ -72,7 +71,6 @@ function App() {
             </ProtectedRoute>
           } />
 
-          {/* New Routes */}
           <Route path="/settings" element={
             <ProtectedRoute>
               <Settings />
@@ -82,12 +80,6 @@ function App() {
           <Route path="/security" element={
             <ProtectedRoute>
               <Security />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/api-settings" element={
-            <ProtectedRoute>
-              <ApiSettings />
             </ProtectedRoute>
           } />
           

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -9,6 +8,7 @@ import GlassCard from "@/components/ui/GlassCard";
 import { FileUp, FileText, Check, X, Download, Loader2, Dna, Activity, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
+import { fetchGroqAI, parseAIResponse, deepParseJsonStrings } from "@/utils/apiService";
 
 const DiseasePrediction = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -16,16 +16,8 @@ const DiseasePrediction = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [analysisResults, setAnalysisResults] = useState<any>(null);
-  const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
   const { toast } = useToast();
   
-  useEffect(() => {
-    // Check if API key is configured
-    const apiKey = localStorage.getItem('groqApiKey');
-    setApiKeyConfigured(!!apiKey);
-  }, []);
-
-  // Simulating file upload handling
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
@@ -37,76 +29,7 @@ const DiseasePrediction = () => {
     }
   };
 
-  const analyzeWithGroq = async (patientInfo: string) => {
-    try {
-      const apiKey = localStorage.getItem('groqApiKey');
-      
-      if (!apiKey) {
-        throw new Error("API key not configured");
-      }
-      
-      // In a real implementation, this call would be proxied through your backend
-      // where the API key is stored securely in environment variables
-      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: "llama3-70b-8192",
-          messages: [
-            {
-              role: "system",
-              content: "You are a medical AI assistant specialized in disease prediction and analysis based on patient symptoms, medical history, and genetic markers. Provide a comprehensive analysis with high accuracy."
-            },
-            {
-              role: "user",
-              content: `Based on these patient details, provide a disease prediction analysis with probability percentages, detection of genetic risk factors, and health recommendations. Format your response as a JSON object with these sections. ${patientInfo}`
-            }
-          ],
-          temperature: 0.3,
-          max_tokens: 2048
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log("Groq API response:", data);
-      
-      const content = data.choices[0].message.content;
-      try {
-        // Try to extract JSON from the response which might be markdown formatted
-        const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/) || 
-                         content.match(/```\n([\s\S]*?)\n```/) ||
-                         content.match(/{[\s\S]*}/);
-        
-        const jsonStr = jsonMatch ? jsonMatch[1] || jsonMatch[0] : content;
-        return JSON.parse(jsonStr.trim());
-      } catch (jsonError) {
-        console.error("Error parsing JSON from Groq response:", jsonError);
-        throw new Error("Could not parse response from AI service");
-      }
-    } catch (error) {
-      console.error("Error calling Groq API:", error);
-      throw error;
-    }
-  };
-
-  // Analysis process with progress updates
   const handleAnalysis = async () => {
-    if (!apiKeyConfigured) {
-      toast({
-        variant: "destructive",
-        title: "API Key Required",
-        description: "Please configure your Groq API key in the API settings.",
-      });
-      return;
-    }
-    
     if (!file && !patientText) {
       toast({
         variant: "destructive",
@@ -120,7 +43,6 @@ const DiseasePrediction = () => {
     setProgress(0);
     setAnalysisResults(null);
 
-    // Setup progress simulation
     const interval = setInterval(() => {
       setProgress(prev => {
         const newProgress = prev + 10;
@@ -133,13 +55,17 @@ const DiseasePrediction = () => {
     }, 300);
 
     try {
-      // Use entered text or placeholder for demo
       const textToAnalyze = patientText || 
         "56-year-old male with persistent cough, fever of 101.2°F, shortness of breath, and fatigue. Medical history includes hypertension diagnosed in 2015 and Type 2 Diabetes diagnosed in 2018. Genetic test shows CYP2D6 - Intermediate metabolizer and SLCO1B1 - Reduced function. Currently taking Lisinopril 10mg daily and Metformin 500mg twice daily. Known allergies to Penicillin and Shellfish.";
       
-      const result = await analyzeWithGroq(textToAnalyze);
+      const response = await fetchGroqAI({
+        prompt: `Based on these patient details, provide a disease prediction analysis with probability percentages, detection of genetic risk factors, and health recommendations. Format your response as a JSON object with these sections. ${textToAnalyze}`,
+        systemMessage: "You are a medical AI assistant specialized in disease prediction and analysis based on patient symptoms, medical history, and genetic markers. Provide a comprehensive analysis with high accuracy."
+      });
       
-      // Process any string fields that might be JSON
+      const content = response.choices[0].message.content;
+      const result = parseAIResponse(content);
+      
       const processedResult = deepParseJsonStrings(result);
       
       setAnalysisResults(processedResult);
@@ -164,37 +90,6 @@ const DiseasePrediction = () => {
     }
   };
 
-  // Function to recursively parse any JSON strings in the object
-  const deepParseJsonStrings = (obj: any): any => {
-    if (obj === null || obj === undefined) return obj;
-    
-    if (typeof obj === 'string') {
-      try {
-        // Try to parse it as JSON
-        return JSON.parse(obj);
-      } catch (e) {
-        // If it's not valid JSON, return the original string
-        return obj;
-      }
-    }
-    
-    if (Array.isArray(obj)) {
-      return obj.map(item => deepParseJsonStrings(item));
-    }
-    
-    if (typeof obj === 'object') {
-      const result: any = {};
-      for (const [key, value] of Object.entries(obj)) {
-        result[key] = deepParseJsonStrings(value);
-      }
-      return result;
-    }
-    
-    // For numbers, booleans, etc., return as is
-    return obj;
-  };
-
-  // Helper function to render complex values correctly
   const renderValue = (value: any): React.ReactNode => {
     if (value === null || value === undefined) {
       return '';
@@ -221,7 +116,6 @@ const DiseasePrediction = () => {
     return String(value);
   };
   
-  // Helper function to render object values
   const renderObjectValue = (obj: any): React.ReactNode => {
     return (
       <div className="space-y-2">
@@ -254,10 +148,6 @@ const DiseasePrediction = () => {
       description: "Disease prediction results have been downloaded",
     });
   };
-  
-  const handleConfigureApiKey = () => {
-    window.location.href = "/api-settings";
-  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-white to-gray-50">
@@ -273,19 +163,6 @@ const DiseasePrediction = () => {
               AI-powered disease prediction and risk assessment based on patient symptoms, medical history, and genetic markers.
             </p>
           </div>
-
-          {!apiKeyConfigured && (
-            <GlassCard className="mb-8 bg-yellow-50/50">
-              <div className="flex items-start gap-4">
-                <AlertTriangle className="h-6 w-6 text-yellow-500 flex-shrink-0 mt-1" />
-                <div>
-                  <h3 className="font-medium text-lg">API Key Not Configured</h3>
-                  <p className="mb-4">To use the disease prediction feature, you need to configure your Groq API key.</p>
-                  <Button onClick={handleConfigureApiKey}>Configure API Key</Button>
-                </div>
-              </div>
-            </GlassCard>
-          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
             <div className="lg:col-span-2 space-y-6 animate-slide-up">
@@ -331,7 +208,7 @@ const DiseasePrediction = () => {
                   <Button 
                     className="w-full" 
                     onClick={handleAnalysis}
-                    disabled={isAnalyzing || !apiKeyConfigured}
+                    disabled={isAnalyzing}
                   >
                     {isAnalyzing ? (
                       <>
@@ -387,7 +264,6 @@ const DiseasePrediction = () => {
                   </div>
                 ) : (
                   <div className="space-y-6 animate-fade-in">
-                    {/* Predicted Diseases */}
                     <div>
                       <h3 className="text-md font-medium text-primary mb-3">Predicted Diseases</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -411,7 +287,6 @@ const DiseasePrediction = () => {
                       </div>
                     </div>
                     
-                    {/* Risk Factors */}
                     <div>
                       <h3 className="text-md font-medium text-primary mb-3">Risk Factors</h3>
                       <ul className="bg-gray-50 rounded-lg p-4 space-y-2">
@@ -428,7 +303,6 @@ const DiseasePrediction = () => {
                       </ul>
                     </div>
                     
-                    {/* Genetic Factors */}
                     <div>
                       <h3 className="text-md font-medium text-primary mb-3">Genetic Factors</h3>
                       <ul className="bg-gray-50 rounded-lg p-4 space-y-2">
@@ -445,7 +319,6 @@ const DiseasePrediction = () => {
                       </ul>
                     </div>
                     
-                    {/* Recommendations */}
                     <div>
                       <h3 className="text-md font-medium text-primary mb-3">Recommendations</h3>
                       <ul className="bg-blue-50 rounded-lg p-4 space-y-2">
