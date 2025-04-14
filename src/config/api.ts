@@ -2,7 +2,7 @@
 // Base URLs for different APIs
 export const API_CONFIG = {
   // In a production environment, this would come from environment variables
-  GROQ_API_URL: "https://api.groq.com/openai/v1/chat/completions",
+  GROQ_API_URL: "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",
   
   // For demo purposes, we're using a hardcoded API key
   // In production, this should be in server-side environment variables
