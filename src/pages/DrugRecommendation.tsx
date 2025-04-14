@@ -1,21 +1,20 @@
+
 import { useState, useEffect } from "react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import GlassCard from "@/components/ui/GlassCard";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { 
   Search, FlaskConical, User, FileText, BarChart, 
   ShieldCheck, PlusCircle, Loader2, ChevronRight, 
-  Star, Scale, Heart, Pill, Dna, Download
+  Star, Scale, Heart, Pill, Dna, Download, Key
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { deepParseJsonStrings, safelyRenderValue } from "@/utils/jsonHelpers";
-
-// Groq API key
-const GROQ_API_KEY = "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";
 
 const DrugRecommendation = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -24,17 +23,59 @@ const DrugRecommendation = () => {
   const [patientData, setPatientData] = useState<any>(null);
   const [drugRecommendations, setDrugRecommendations] = useState<any[]>([]);
   const [patientInput, setPatientInput] = useState("");
+  const [apiKey, setApiKey] = useState("");
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    // Try to get the API key from localStorage
+    const storedApiKey = localStorage.getItem("groq_api_key");
+    if (storedApiKey) {
+      setApiKey(storedApiKey);
+    } else {
+      setShowApiKeyInput(true);
+    }
   }, []);
 
+  const saveApiKey = () => {
+    if (apiKey.trim()) {
+      localStorage.setItem("groq_api_key", apiKey.trim());
+      setShowApiKeyInput(false);
+      toast({
+        title: "API Key Saved",
+        description: "Your API key has been securely saved in your browser.",
+      });
+    } else {
+      toast({
+        variant: "destructive",
+        title: "API Key Required",
+        description: "Please enter a valid API key.",
+      });
+    }
+  };
+
+  const clearApiKey = () => {
+    localStorage.removeItem("groq_api_key");
+    setApiKey("");
+    setShowApiKeyInput(true);
+  };
+
   const analyzeWithGroq = async (patientInfo: string) => {
+    if (!apiKey) {
+      toast({
+        variant: "destructive",
+        title: "API Key Required",
+        description: "Please provide your Groq API key.",
+      });
+      setShowApiKeyInput(true);
+      return null;
+    }
+
     try {
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${GROQ_API_KEY}`,
+          "Authorization": `Bearer ${apiKey}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
@@ -310,10 +351,50 @@ const DrugRecommendation = () => {
             </p>
           </div>
 
+          {showApiKeyInput && (
+            <div className="max-w-2xl mx-auto mb-8">
+              <GlassCard>
+                <h2 className="text-xl font-semibold mb-6">API Key Configuration</h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">
+                      Groq API Key
+                    </label>
+                    <div className="flex space-x-2">
+                      <div className="relative flex-grow">
+                        <Input
+                          type="password"
+                          value={apiKey}
+                          onChange={(e) => setApiKey(e.target.value)}
+                          placeholder="Enter your Groq API key"
+                          className="pr-10"
+                        />
+                        <Key className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <Button onClick={saveApiKey}>Save Key</Button>
+                    </div>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    <p>Your API key will be stored securely in your browser's local storage.</p>
+                    <p>Get your API key from <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" className="text-primary underline">Groq's Console</a>.</p>
+                  </div>
+                </div>
+              </GlassCard>
+            </div>
+          )}
+
           {!patientData ? (
             <div className="max-w-2xl mx-auto">
               <GlassCard>
-                <h2 className="text-xl font-semibold mb-6">Enter Patient Information</h2>
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-semibold">Enter Patient Information</h2>
+                  {!showApiKeyInput && (
+                    <Button variant="outline" size="sm" onClick={clearApiKey}>
+                      <Key className="h-4 w-4 mr-2" />
+                      Change API Key
+                    </Button>
+                  )}
+                </div>
                 <div className="space-y-4">
                   <Textarea 
                     className="min-h-[200px]"
@@ -324,7 +405,7 @@ const DrugRecommendation = () => {
                   <Button 
                     className="w-full" 
                     onClick={handlePatientAnalysis}
-                    disabled={isLoading}
+                    disabled={isLoading || !apiKey}
                   >
                     {isLoading ? (
                       <>

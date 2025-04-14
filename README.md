@@ -1,48 +1,81 @@
 
+# MedAI Platform
 
-**Use your preferred IDE**
+A React-based medical AI platform providing features like patient analysis, disease prediction, and drug recommendations.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Features
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- 🔒 Secure authentication system
+- 👤 Patient analysis with genetic profiles
+- 🔬 Disease prediction based on patient data
+- 💊 AI-powered drug recommendations
+- 🧬 Clinical trial matching
+- 📊 Side effects analysis
 
-Follow these steps:
+## Technologies Used
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+- React 18
+- TypeScript
+- Vite
+- Tailwind CSS
+- shadcn/ui Components
+- React Router DOM
+- Recharts for data visualization
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+## Prerequisites
 
-# Step 3: Install the necessary dependencies.
-npm i
+- Node.js (v18 or later)
+- npm or yarn
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+## Installation
+
+```bash
+# Clone this repository
+git clone <repository-url>
+
+# Navigate to project directory
+cd medai-platform
+
+# Install dependencies
+npm install
+
+# Start the development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## API Keys Setup
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+This application requires the following API keys:
 
-**Use GitHub Codespaces**
+- **Groq AI API Key**: Used for generating medical recommendations and analysis. You can obtain a key from [Groq's Console](https://console.groq.com/keys).
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+API keys are stored securely in the browser's local storage and are never exposed in the application code.
 
-## What technologies are used for this project?
+## Demo Credentials
 
-This project is built with .
+For testing purposes, you can use these demo credentials:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- Email: `demo@example.com`
+- Password: `password123`
 
+## Project Structure
+
+- `src/`
+  - `components/`: Reusable UI components
+  - `hooks/`: Custom React hooks
+  - `lib/`: Utility functions
+  - `pages/`: Main application pages
+  - `utils/`: Helper utilities
+
+## Security Notes
+
+- This demo uses localStorage for authentication. In a production environment, use a proper authentication system with JWT or similar.
+- API keys are stored in localStorage for demonstration. In production, API calls should be proxied through a secure backend.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+[MIT](LICENSE)
