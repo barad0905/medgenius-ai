@@ -7,5 +7,5 @@ export const API_CONFIG = {
   // For demo purposes, we're using a hardcoded API key
   // In production, this should be in server-side environment variables
   // NEVER expose API keys in client-side code in production!
-  GROQ_API_KEY: "demo-groq-api-key-abc123"
+ 
 };
