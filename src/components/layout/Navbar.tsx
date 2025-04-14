@@ -1,14 +1,17 @@
 
 import { useState, useEffect } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Menu, X, FlaskConical, HeartPulse, FileText, Beaker, TestTube } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import UserMenu from "@/components/auth/UserMenu";
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
+  const isLoggedIn = localStorage.getItem('authToken') !== null;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -25,7 +28,6 @@ const Navbar = () => {
     { name: "Patient Analysis", path: "/patient-analysis", icon: <FileText className="mr-2 h-4 w-4" /> },
     { name: "Drug Recommendation", path: "/drug-recommendation", icon: <FlaskConical className="mr-2 h-4 w-4" /> },
     { name: "Drug Discovery", path: "/drug-discovery", icon: <Beaker className="mr-2 h-4 w-4" /> },
-    { name: "Clinical Trials", path: "/clinical-trials", icon: <TestTube className="mr-2 h-4 w-4" /> },
     { name: "Side Effects", path: "/side-effects", icon: <HeartPulse className="mr-2 h-4 w-4" /> },
   ];
 
@@ -47,20 +49,24 @@ const Navbar = () => {
         </NavLink>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center space-x-6">
-          {navLinks.map((link) => (
-            <NavLink
-              key={link.path}
-              to={link.path}
-              className={({ isActive }) => cn(
-                "flex items-center text-sm font-medium transition-colors hover:text-primary",
-                isActive ? "text-primary" : "text-muted-foreground"
-              )}
-            >
-              {link.name}
-            </NavLink>
-          ))}
-        </nav>
+        <div className="hidden md:flex items-center justify-between w-full ml-10">
+          <nav className="flex items-center space-x-6">
+            {navLinks.map((link) => (
+              <NavLink
+                key={link.path}
+                to={link.path}
+                className={({ isActive }) => cn(
+                  "flex items-center text-sm font-medium transition-colors hover:text-primary",
+                  isActive ? "text-primary" : "text-muted-foreground"
+                )}
+              >
+                {link.name}
+              </NavLink>
+            ))}
+          </nav>
+          
+          {isLoggedIn && <UserMenu />}
+        </div>
 
         {/* Mobile Menu Button */}
         <button
@@ -94,6 +100,22 @@ const Navbar = () => {
                 {link.name}
               </NavLink>
             ))}
+            
+            {isLoggedIn && (
+              <>
+                <div className="border-t my-2"></div>
+                <NavLink
+                  to="/settings"
+                  className={({ isActive }) => cn(
+                    "flex items-center py-2 text-base font-medium transition-colors hover:text-primary animate-slide-in",
+                    isActive ? "text-primary" : "text-muted-foreground"
+                  )}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Settings
+                </NavLink>
+              </>
+            )}
           </div>
         </div>
       )}

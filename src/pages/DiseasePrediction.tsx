@@ -1,17 +1,14 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import GlassCard from "@/components/ui/GlassCard";
-import { FileUp, FileText, Check, X, Download, Loader2, Dna, Activity } from "lucide-react";
+import { FileUp, FileText, Check, X, Download, Loader2, Dna, Activity, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
-
-// Groq API key
-const GROQ_API_KEY = "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";
 
 const DiseasePrediction = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -19,7 +16,14 @@ const DiseasePrediction = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [analysisResults, setAnalysisResults] = useState<any>(null);
+  const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
   const { toast } = useToast();
+  
+  useEffect(() => {
+    // Check if API key is configured
+    const apiKey = localStorage.getItem('groqApiKey');
+    setApiKeyConfigured(!!apiKey);
+  }, []);
 
   // Simulating file upload handling
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -35,10 +39,18 @@ const DiseasePrediction = () => {
 
   const analyzeWithGroq = async (patientInfo: string) => {
     try {
+      const apiKey = localStorage.getItem('groqApiKey');
+      
+      if (!apiKey) {
+        throw new Error("API key not configured");
+      }
+      
+      // In a real implementation, this call would be proxied through your backend
+      // where the API key is stored securely in environment variables
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${GROQ_API_KEY}`,
+          "Authorization": `Bearer ${apiKey}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
@@ -86,6 +98,15 @@ const DiseasePrediction = () => {
 
   // Analysis process with progress updates
   const handleAnalysis = async () => {
+    if (!apiKeyConfigured) {
+      toast({
+        variant: "destructive",
+        title: "API Key Required",
+        description: "Please configure your Groq API key in the API settings.",
+      });
+      return;
+    }
+    
     if (!file && !patientText) {
       toast({
         variant: "destructive",
@@ -233,6 +254,10 @@ const DiseasePrediction = () => {
       description: "Disease prediction results have been downloaded",
     });
   };
+  
+  const handleConfigureApiKey = () => {
+    window.location.href = "/api-settings";
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-white to-gray-50">
@@ -248,6 +273,19 @@ const DiseasePrediction = () => {
               AI-powered disease prediction and risk assessment based on patient symptoms, medical history, and genetic markers.
             </p>
           </div>
+
+          {!apiKeyConfigured && (
+            <GlassCard className="mb-8 bg-yellow-50/50">
+              <div className="flex items-start gap-4">
+                <AlertTriangle className="h-6 w-6 text-yellow-500 flex-shrink-0 mt-1" />
+                <div>
+                  <h3 className="font-medium text-lg">API Key Not Configured</h3>
+                  <p className="mb-4">To use the disease prediction feature, you need to configure your Groq API key.</p>
+                  <Button onClick={handleConfigureApiKey}>Configure API Key</Button>
+                </div>
+              </div>
+            </GlassCard>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
             <div className="lg:col-span-2 space-y-6 animate-slide-up">
@@ -293,7 +331,7 @@ const DiseasePrediction = () => {
                   <Button 
                     className="w-full" 
                     onClick={handleAnalysis}
-                    disabled={isAnalyzing}
+                    disabled={isAnalyzing || !apiKeyConfigured}
                   >
                     {isAnalyzing ? (
                       <>

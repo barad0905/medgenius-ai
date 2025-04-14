@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from '@/hooks/use-toast';
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import { Loader2 } from 'lucide-react';
 
 // Mock credentials for demo purposes
 const DEMO_USER = { email: "demo@example.com", password: "password123" };
@@ -22,21 +23,34 @@ const Login = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user is already logged in
-    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-    if (isLoggedIn) {
+    // Check if user is already logged in with a valid token
+    const authToken = localStorage.getItem('authToken');
+    if (authToken) {
       navigate('/');
     }
   }, [navigate]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      // In a real implementation, this would be a fetch to your authentication endpoint
+      // For demo purposes, we're simulating an API call
+      // const response = await fetch('/api/auth/login', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ email: loginEmail, password: loginPassword }),
+      // });
+      
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Check credentials against demo user
       if (loginEmail === DEMO_USER.email && loginPassword === DEMO_USER.password) {
-        localStorage.setItem('isLoggedIn', 'true');
+        // In a real implementation, we would get a token from the server
+        const mockToken = btoa(`${Date.now()}-${loginEmail}`); // not for production use
+        localStorage.setItem('authToken', mockToken);
         localStorage.setItem('userEmail', loginEmail);
         toast({
           title: "Login successful",
@@ -50,11 +64,19 @@ const Login = () => {
           description: "Invalid email or password. Try demo@example.com / password123",
         });
       }
+    } catch (error) {
+      console.error('Login error:', error);
+      toast({
+        variant: "destructive",
+        title: "Login error",
+        description: "An error occurred during login. Please try again.",
+      });
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
@@ -69,17 +91,37 @@ const Login = () => {
       return;
     }
     
-    // Simulate API call
-    setTimeout(() => {
-      localStorage.setItem('isLoggedIn', 'true');
+    try {
+      // In a real implementation, this would be a fetch to your registration endpoint
+      // const response = await fetch('/api/auth/register', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ email: signupEmail, password: signupPassword }),
+      // });
+      
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Create mock token for demonstration
+      const mockToken = btoa(`${Date.now()}-${signupEmail}`); // not for production use
+      localStorage.setItem('authToken', mockToken);
       localStorage.setItem('userEmail', signupEmail);
+      
       toast({
         title: "Account created",
         description: "Welcome to MedAI!",
       });
       navigate('/');
+    } catch (error) {
+      console.error('Signup error:', error);
+      toast({
+        variant: "destructive",
+        title: "Signup error",
+        description: "An error occurred during account creation. Please try again.",
+      });
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -140,7 +182,12 @@ const Login = () => {
                     </div>
                     
                     <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? "Logging in..." : "Login"}
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Logging in...
+                        </>
+                      ) : "Login"}
                     </Button>
                   </form>
                 </TabsContent>
@@ -190,7 +237,12 @@ const Login = () => {
                     </div>
                     
                     <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? "Creating Account..." : "Create Account"}
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Creating Account...
+                        </>
+                      ) : "Create Account"}
                     </Button>
                   </form>
                 </TabsContent>

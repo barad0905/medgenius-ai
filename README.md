@@ -9,7 +9,7 @@ A React-based medical AI platform providing features like patient analysis, dise
 - 👤 Patient analysis with genetic profiles
 - 🔬 Disease prediction based on patient data
 - 💊 AI-powered drug recommendations
-- 🧬 Clinical trial matching
+- 🧬 Drug discovery with molecular analysis
 - 📊 Side effects analysis
 
 ## Technologies Used
@@ -45,11 +45,27 @@ npm run dev
 
 ## API Keys Setup
 
-This application requires the following API keys:
+This application uses the Groq AI API for generating medical recommendations and analysis.
 
-- **Groq AI API Key**: Used for generating medical recommendations and analysis. You can obtain a key from [Groq's Console](https://console.groq.com/keys).
+### Configuration Steps:
 
-API keys are stored securely in the browser's local storage and are never exposed in the application code.
+1. Obtain a Groq API key from [Groq's Console](https://console.groq.com/keys)
+2. In a production environment, store this key in server-side environment variables
+3. For development, you can enter your API key in the API Settings page of the application
+
+## Server-Side Implementation
+
+In a production environment, you should implement:
+
+1. A secure backend service that stores API keys in environment variables
+2. Proper authentication and session management
+3. API endpoint proxying to keep sensitive keys secure
+
+Example `.env` file structure for your backend:
+```
+GROQ_API_KEY=your_api_key_here
+JWT_SECRET=your_jwt_secret_here
+```
 
 ## Demo Credentials
 
@@ -70,7 +86,7 @@ For testing purposes, you can use these demo credentials:
 ## Security Notes
 
 - This demo uses localStorage for authentication. In a production environment, use a proper authentication system with JWT or similar.
-- API keys are stored in localStorage for demonstration. In production, API calls should be proxied through a secure backend.
+- For production deployment, implement proper API key management through environment variables on your server.
 
 ## Contributing
 

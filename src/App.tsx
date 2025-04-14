@@ -6,10 +6,12 @@ import PatientAnalysis from "./pages/PatientAnalysis";
 import DiseasePrediction from "./pages/DiseasePrediction";
 import DrugDiscovery from "./pages/DrugDiscovery";
 import DrugRecommendation from "./pages/DrugRecommendation";
-import ClinicalTrials from "./pages/ClinicalTrials";
 import SideEffects from "./pages/SideEffects";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
+import Settings from "./pages/Settings";
+import Security from "./pages/Security";
+import ApiSettings from "./pages/ApiSettings";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { useEffect, useState } from "react";
 
@@ -64,15 +66,28 @@ function App() {
             </ProtectedRoute>
           } />
           
-          <Route path="/clinical-trials" element={
-            <ProtectedRoute>
-              <ClinicalTrials />
-            </ProtectedRoute>
-          } />
-          
           <Route path="/side-effects" element={
             <ProtectedRoute>
               <SideEffects />
+            </ProtectedRoute>
+          } />
+
+          {/* New Routes */}
+          <Route path="/settings" element={
+            <ProtectedRoute>
+              <Settings />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/security" element={
+            <ProtectedRoute>
+              <Security />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/api-settings" element={
+            <ProtectedRoute>
+              <ApiSettings />
             </ProtectedRoute>
           } />
           
